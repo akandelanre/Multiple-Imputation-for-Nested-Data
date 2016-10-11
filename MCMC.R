@@ -41,7 +41,7 @@ for(mc in 1:n_iter){
       comb_to_check <- Data_indiv_t
       comb_to_check <- matrix(t(comb_to_check),byrow=T,nrow=n_batch)
       comb_to_check <- cbind(Data_house_t[,(q-p+1):q],comb_to_check) #add the household head before check
-      check_counter <- checkSZ(comb_to_check,(hh_size+1)) 
+      check_counter <- Check_SZ_Other(comb_to_check,(hh_size+1)) 
       Data_indiv_t <- matrix(t(comb_to_check[,-c(1:p)]),byrow=T,ncol=p)
       
       t_1 <- t_1 + sum(check_counter);
@@ -245,7 +245,7 @@ for(mc in 1:n_iter){
           comb_to_check <- matrix(as.numeric(as.character(t(Data_indiv_prop))),nrow=1)
           comb_to_check <- cbind(matrix(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),nrow=1),
                                  comb_to_check)
-          check_counter <- checkSZ(comb_to_check,n_another_index)
+          check_counter <- Check_SZ_Other(comb_to_check,n_another_index)
           check_counter_sss <- check_counter_sss + check_counter
         }
         Data_indiv[another_index,] <- Data_indiv_prop

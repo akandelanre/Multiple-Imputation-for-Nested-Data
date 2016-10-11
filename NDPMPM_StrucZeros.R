@@ -5,103 +5,94 @@
 ###########################################################################
 ############### MI using NDPMPM: Integrate missing data out ###############
 ############### Use rejection sampler to sample missing data ##############
-####### Also make household head into a household level variable ##########
+############################ Use simulated data ###########################
 ###########################################################################
 ###########################################################################
 
 ###################################### START ######################################
 ########################## Step 1: One Time Data Preparation ########################## 
 rm(list = ls())
-###### 1: Import Data
-House <- read.csv("Data/House.csv",header=T)
-Indiv <- read.csv("Data/Indiv.csv",header=T)
+library(DirichletReg)
+source("OtherFunctions/OtherFunctions.R")
+###### 1: Set global parameters
+n <- 10000; F_true <- 5; S_true <- 2; p <- 3; q <- 2;
 
-###### 2: Remove Households with size < 2 and > 4
-House <- House[which(House$NP >= 2 & House$NP <= 4),]
-
-###### 3: Keep only Households with TEN == 1,2,or 3 and recode 1,2 as 1 and 3 as 2
-House <- House[which(House$TEN == 1 | House$TEN == 2 | House$TEN == 3),]
-House$TEN[which(House$TEN == 2)] <- 1
-House$TEN[which(House$TEN == 3)] <- 2
-
-###### 4: Take a sample of size 2,000 Households
-set.seed(419)
-sample_size <- 2000
-samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
-House <- House[samp_index,]
-
-###### 5: Pick the same households in the indiv data
-pick_index <- is.element(Indiv$SERIALNO,House$SERIALNO)
-Indiv <- Indiv[pick_index,]
-
-###### 6: Recode within-household variables
-###### 6a: First, the relationship variable
-Indiv$RELP[which(Indiv$RELP == 12 | Indiv$RELP == 13)] <- 11
-Indiv$RELP[which(Indiv$RELP == 14 | Indiv$RELP == 15)] <- 12
-Indiv$RELP[which(Indiv$RELP == 2 | Indiv$RELP == 4)] <- 3
-Indiv$RELP[which(Indiv$RELP == 1)] <- 2
-Indiv$RELP[which(Indiv$RELP == 0)] <- 1
-Indiv$RELP[which(Indiv$RELP == 9)] <- 4
-Indiv$RELP[which(Indiv$RELP == 7)] <- 9
-Indiv$RELP[which(Indiv$RELP == 5)] <- 7
-Indiv$RELP[which(Indiv$RELP == 6)] <- 5
-Indiv$RELP[which(Indiv$RELP == 8)] <- 6
-###### 6b: Next, the race variable
-Indiv$RAC3P[which(Indiv$RAC3P == 4 | Indiv$RAC3P == 8| Indiv$RAC3P == 9 | Indiv$RAC3P == 10)] <- 6
-Indiv$RAC3P[which(Indiv$RAC3P == 5)] <- 4
-Indiv$RAC3P[which(Indiv$RAC3P == 7)] <- 5
-Indiv$RAC3P[which(Indiv$RAC3P >= 11 & Indiv$RAC3P <= 15)] <- 7
-Indiv$RAC3P[which(Indiv$RAC3P >= 16 & Indiv$RAC3P <= 59)] <- 8
-Indiv$RAC3P[which(Indiv$RAC3P >= 60 & Indiv$RAC3P <= 100)] <- 9
-###### 6c: Next, the hisp variable
-Indiv$HISP[which(Indiv$HISP >= 5 & Indiv$HISP <= 24)] <- 5
-###### 6d: Lastly, age
-Indiv$AGEP <- Indiv$AGEP + 1L
-
-###### 7: Make household head into household level data
-HHhead_data <- Indiv[which(Indiv$SPORDER==1),]
-Indiv_minHH <- Indiv[-which(Indiv$SPORDER==1),]
-
-###### 8: Combine Household and within-household data using the following ordering:
-###### c("HHIndex","WithinHHIndex","Gender","Race","Hisp","Age","Relate","Owner")
-#origdata <- data.frame(HHIndex = rep(c(1:sample_size),House$NP),WithinHHIndex = Indiv$SPORDER,
-#                       Gender = Indiv$SEX,Race = Indiv$RAC3P,Hisp = Indiv$HISP,
-#                       Age = Indiv$AGEP,Relate = Indiv$RELP,Owner = rep(House$TEN,House$NP))
-#colnames(origdata) <- c("HHIndex","WithinHHIndex","Gender","Race","Hisp","Age","Relate","Owner")
-
-origdata <- data.frame(HHIndex = rep(c(1:sample_size),(House$NP-1L)),
-                       WithinHHIndex = Indiv_minHH$SPORDER,
-                       Gender = Indiv_minHH$SEX,Race = Indiv_minHH$RAC3P,Hisp = Indiv_minHH$HISP,
-                       Age = Indiv_minHH$AGEP,Relate = Indiv_minHH$RELP,
-                       Owner = rep(House$TEN,(House$NP-1L)),
-                       HHGender = rep(HHhead_data$SEX,(House$NP-1L)),
-                       HHRace = rep(HHhead_data$RAC3P,(House$NP-1L)),
-                       HHHisp = rep(HHhead_data$HISP,(House$NP-1L)),
-                       HHAge = rep(HHhead_data$AGEP,(House$NP-1L)),
-                       HHRelate = rep(HHhead_data$RELP,(House$NP-1L)))
-
-###### 8: Save!!!
-write.table(origdata,"Data/origdata.txt",row.names = FALSE)
-
-###### 9: Load the data back
-origdata <- read.table("Data/origdata.txt",header=T)
-
-###### 10: Separate household and individual data
-n_all <- length(unique(origdata$HHIndex))
-X_indiv <- NULL
-X_house <- NULL
-for(i in 1:n_all){
-  which_indiv <- which(origdata$HHIndex==i)
-  X_indiv <- rbind(X_indiv,origdata[which_indiv,c("Gender","Race","Hisp","Age","Relate")])
-  X_house <- rbind(X_house,cbind(length(which_indiv),origdata[
-      which_indiv[length(which_indiv)],c("Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")]))
+###### 2a: Set household-level parameters
+U <- matrix(rbeta(F_true,1,8),nrow=F_true); U[F_true] <- 1
+one_min_U <- 1L-U; one_min_U <- c(1,cumprod(one_min_U[1:(F_true-1)]))
+pi_true <- U*one_min_U
+G <- sample(c(1:F_true),n,replace=TRUE,prob=pi_true)
+d_k_house <- c(3,3)
+d_k <- 1+cumsum(c(0,d_k_house[-q]))
+lambda_true <- matrix(0,nrow=sum(d_k_house),ncol=F_true)
+for(g in 1:F_true){
+  lambda_true[d_k[1]:cumsum(d_k_house)[1],g] <- t(rdirichlet(1,sample(c(20,300,100),3,replace=FALSE)))
+  lambda_true[d_k[2]:cumsum(d_k_house)[2],g] <- t(rdirichlet(1,sample(c(1,3,20),3,replace=TRUE)))
 }
-colnames(X_house) <- c("HHSize","Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")
-X_house <- as.data.frame(X_house)
 
-###### 11: Save!!!
-write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
-write.table(X_indiv, file = "Data/X_indiv.txt",row.names = FALSE)
+###### 2b: Sample households
+X_house <- matrix(0,ncol=q,nrow=n)
+for(i in 1:n){
+  for(k in 1:q){
+    X_house[i,k] <- sample(c(1:d_k_house[k]),1,replace=FALSE,prob=lambda_true[d_k[k]:cumsum(d_k_house)[k],G[i]])
+  }
+}
+
+###### 3a: Set individual-level parameters
+V <- matrix(rbeta((F_true*S_true),1,10),nrow=F_true,ncol=S_true); V[,S_true] <- 1; 
+one_min_V <- 1L-V; one_min_V <- cbind(1,as.matrix(one_min_V[,-S_true]))
+omega_true <- V*one_min_V
+d_k_indiv <- c(2,2,2)
+d_k_gm <- 1+cumsum(c(0,d_k_indiv[-p]))
+n_i <- X_house[,1]
+house_index <- rep(c(1:n),n_i)
+n_i_index <- rep(n_i,n_i)
+rep_G <- rep(G,n_i)
+N <- length(house_index)
+M <- matrix(0,nrow=N,ncol=1)
+for(j in 1:N){
+  M[j] <- sample(c(1:S_true),1,replace=FALSE,prob=omega_true[rep_G[j],])
+}
+phi_true <- array(0,dim=c(sum(d_k_indiv),S_true,F_true))
+for(m in 1:S_true){
+  for(g in 1:F_true){
+    phi_true[d_k_gm[1]:cumsum(d_k_indiv)[1],m,g] <- c(0.2,0.8)
+    phi_true[d_k_gm[2]:cumsum(d_k_indiv)[2],m,g] <- c(0.3,0.7)
+    if(m==1){
+      phi_true[d_k_gm[3]:cumsum(d_k_indiv)[3],m,g] <- c(0.4,0.6)
+    } else{
+      phi_true[d_k_gm[3]:cumsum(d_k_indiv)[3],m,g] <- c(0.6,0.4)
+    }
+  }
+}
+
+###### 3b: Sample individuals
+X_indiv = matrix(0,ncol=p,nrow=N)
+for(j in 1:N){
+  for(k in 1:p){
+    X_indiv[j,k] <- sample(c(1:d_k_indiv[k]),1,replace=TRUE,prob=phi_true[d_k_gm[k]:cumsum(d_k_indiv)[k],M[j],rep_G[j]])
+  }
+}
+
+###### 4a: Define Structural Zeros for household 2; Use possible combinations instead of impossibles
+X_indiv_check_counter = X_house_check_counter = NULL
+for(str_ch in 1:n){
+  hh_to_check <- X_indiv[which(house_index==str_ch),]
+  if(Check_SZ_Other(hh_to_check)==1){
+    X_indiv_check_counter = c(X_indiv_check_counter,which(house_index==str_ch))
+    X_house_check_counter = c(X_house_check_counter,str_ch)
+  }
+}
+
+###### 4b: Select only possible households in final data
+X_indiv = X_indiv[X_indiv_check_counter,]
+X_house = X_house[X_house_check_counter,]
+#G = G[X_house_check_counter]
+#M = M[X_indiv_check_counter]
+
+###### 4c: Save!!!
+write.csv(X_house, file = "X_house.csv",row.names = FALSE)
+write.csv(X_indiv, file = "X_indiv.csv",row.names = FALSE)
 ########################## End of Step 1 ########################## 
 
 
@@ -121,19 +112,18 @@ library(matrixStats)
 library(coda)
 Rcpp::sourceCpp('CppFunctions/prGpost.cpp')
 Rcpp::sourceCpp('CppFunctions/prMpost.cpp')
-Rcpp::sourceCpp('CppFunctions/checkSZ.cpp')
 source("OtherFunctions/OtherFunctions.R")
-X_house = read.table("Data/X_house.txt",header=TRUE)
-X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
-level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:100),c(2:12))
-level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(1:100),c(1))
+X_house <- read.table("Data/X_house.txt",header=TRUE)
+X_indiv <- read.table("Data/X_indiv.txt",header=TRUE)
+level_house <- list(c(1:3),c(1:3))
+level_indiv <- list(c(1:2),c(1:2),c(1:2))
 Data_house <- data.frame(X_house)
 for(i in 1:ncol(Data_house)){
-  Data_house[,i] = factor(Data_house[,i],levels=level_house[[i]])
+  Data_house[,i] <- factor(Data_house[,i],levels=level_house[[i]])
 }
 Data_indiv <- data.frame(X_indiv)
 for(i in 1:ncol(Data_indiv)){
-  Data_indiv[,i] = factor(Data_indiv[,i],levels=level_indiv[[i]])
+  Data_indiv[,i] <- factor(Data_indiv[,i],levels=level_indiv[[i]])
 }
 Data_indiv_truth <- Data_indiv; Data_house_truth <- Data_house
 
@@ -149,32 +139,14 @@ n_i_index <- rep(n_i,n_i)
 
 
 ###### 3: Poke holes in Data:: Ignore missing household level data for now 
-### First make sure 75% of the households have complete data
-### Also, make sure household head is always observed
-### 40% have only relate missing, 40% have only age missing and 20% have both missing.
-### The other individual level variables are missing with 40% probability
 set.seed(419)
-n_miss <- 0.3*n
+n_miss <- 0.35*n
 House_miss_index <- NULL
 Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
-for(i in 1:n_miss){
-  another_index <- which(is.element(house_index,Indiv_miss_index_HH[i])==TRUE)
-  sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
-  if(i <= (0.25*n_miss)){
-    Data_indiv[sub_sample,"Age"] <- NA
-  }
-  if(i > (0.25*n_miss) & i <= (0.5*n_miss)){
-    Data_indiv[sub_sample,"Relate"] <- NA
-  }
-  if(i > (0.5*n_miss)){
-    Data_indiv[sub_sample,c("Age","Relate")] <- NA
-  }
-}
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(Data_indiv)
-others_names <- c("Gender","Race") #others_names <- c("Gender","Race","Hisp")
-O_indiv[Indiv_miss_index,others_names] <- rbinom((length(Indiv_miss_index)*length(others_names)),1,0.2)
+O_indiv[Indiv_miss_index,others_names] <- rbinom((length(Indiv_miss_index)*p),1,0.15)
 Data_indiv[O_indiv==0] <- NA
 NA_indiv <- Data_indiv; NA_house <- Data_house;
 Indiv_miss_index_HH <- sort(Indiv_miss_index_HH)
