@@ -182,24 +182,7 @@ Data_indiv_cc <- Data_indiv[-Indiv_miss_index,]
 Data_house_cc <- Data_house[-Indiv_miss_index_HH,]
 
 
-###### 4: Fill missing values with starting values
-if(sum(is.na(NA_indiv)) > 0){
-  for (ii in 1:ncol(Data_indiv)){
-    Data_indiv[is.na(Data_indiv[,ii]),ii] <- 
-      sample(level_indiv[[ii]],length(Data_indiv[is.na(Data_indiv[,ii]),ii]),replace=T,
-             prob=summary(na.omit(Data_indiv[,ii])))
-  }
-}
-if(sum(is.na(NA_house)) > 0){
-  for (jj in 2:ncol(Data_house)){
-    Data_house[is.na(Data_house[,jj]),jj] <- 
-      sample(level_house[[jj]],length(Data_house[is.na(Data_house[,jj]),jj]),replace=T,
-             prob=summary(na.omit(Data_house[,jj])))
-  }
-}
-
-
-###### 5: Calculate observed proportions and number of categories for each variable
+###### 4: Calculate observed proportions and number of categories for each variable
 d_k_house <- d_k_indiv <- ini_marg_house <- ini_marg_indiv <- NULL
 for(k in 1:q){
   d_k_house <- cbind(d_k_house,nlevels(Data_house[,k]))
@@ -213,11 +196,11 @@ for(k in 1:p){
   ini_marg_indiv <- rbind(ini_marg_indiv,ini_marg_k)  }
 
 
-###### 6: Set parameters for structural zeros
+###### 5: Set parameters for structural zeros
 n_batch <- 10000 #sample impossibles in batches before checking constraints
 
 
-###### 7: Initialize chain
+###### 6: Initialize chain
 FF <- 20
 SS <- 15
 alpha <- beta <- 1
@@ -248,14 +231,14 @@ FFF_indiv <- matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
 FFF_house <- matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
 
 
-###### 8: Create empty matrices to save results
+###### 7: Create empty matrices to save results
 dp_imput_house <- dp_imput_indiv <- NULL
 ALPHA <- BETA <- PII <- G_CLUST <- M_CLUST <- N_ZERO <- NULL
 #LAMBDA <- matrix(0,ncol=(ncol(lambda)*nrow(lambda)),nrow=(n_iter-burn_in))
 #OMEGA <- matrix(0,ncol=(ncol(omega)*nrow(omega)),nrow=(n_iter-burn_in))
 
 
-###### 9: Run MCMC
+###### 8: Run MCMC
 source("MCMC.R")
 MCMC_Results <- list(Data_house_truth=Data_house_truth,Data_indiv_truth=Data_indiv_truth,
                      Data_house_cc=Data_house_cc,Data_indiv_cc=Data_indiv_cc,

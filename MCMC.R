@@ -191,56 +191,6 @@ for(mc in 1:n_iter){
   }
   
   
-  #sample missing X's
-  #First household
-  if(sum(is.na(NA_house)) > 0){
-    lambda_g <- t(lambda[,G])
-    for(kkk in 2:q){
-      if(length(which(is.na(NA_house[,kkk])==TRUE))>0){
-        pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),
-                                d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
-        Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
-        cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
-        level_house_q <- level_house[[kkk]]
-        Data_house[which(is.na(NA_house[,kkk])==TRUE),kkk] <-
-          level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
-      }
-    }
-  }
-  #Now individuals
-  if(sum(is.na(NA_indiv)) > 0){
-    for(sss in 1:n_miss){
-      another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
-      n_another_index <- length(another_index) + 1
-      NA_indiv_prop <- NA_indiv[another_index,]
-      phi_m_g <- t(phi[,(rep_G[another_index]+((M[another_index]-1)*FF))])
-      check_counter_sss <- 0;
-      while(check_counter_sss < 1){
-        Data_indiv_prop <- NA_indiv_prop
-        for(kkkk in 1:p){
-          if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
-            pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),
-                                            d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),
-                                  nrow=length(which(is.na(NA_indiv_prop[,kkkk])==TRUE)),byrow=T)
-            Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
-            cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
-            level_indiv_p <- level_indiv[[kkkk]]
-            Data_indiv_prop[is.na(NA_indiv_prop[,kkkk]),kkkk] <- 
-              level_indiv_p[rowSums(Ran_unif_miss_p>cumul_miss_p) + 1L]
-          }
-        }
-        #Check edit rules
-        comb_to_check <- matrix(as.numeric(as.character(t(Data_indiv_prop))),nrow=1)
-        comb_to_check <- cbind(matrix(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),nrow=1),
-                               comb_to_check)
-        check_counter <- checkSZ(comb_to_check,n_another_index)
-        check_counter_sss <- check_counter_sss + check_counter
-      }
-      Data_indiv[another_index,] <- Data_indiv_prop
-    }
-  }
-  
-  
   #save and sample missing values
   if(mc > burn_in){
     #PII <- rbind(PII,c(pii))
@@ -251,6 +201,56 @@ for(mc in 1:n_iter){
     #LAMBDA[(mc-burn_in),] <- c(lambda)
     #OMEGA[(mc-burn_in),] <- c(omega)
     N_ZERO <- rbind(N_ZERO,n_0)
+    
+    
+    #sample missing X's
+    #First household
+    if(sum(is.na(NA_house)) > 0){
+      lambda_g <- t(lambda[,G])
+      for(kkk in 2:q){
+        if(length(which(is.na(NA_house[,kkk])==TRUE))>0){
+          pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),
+                                  d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
+          Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
+          cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
+          level_house_q <- level_house[[kkk]]
+          Data_house[which(is.na(NA_house[,kkk])==TRUE),kkk] <-
+            level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
+        }
+      }
+    }
+    #Now individuals
+    if(sum(is.na(NA_indiv)) > 0){
+      for(sss in 1:n_miss){
+        another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
+        n_another_index <- length(another_index) + 1
+        NA_indiv_prop <- NA_indiv[another_index,]
+        phi_m_g <- t(phi[,(rep_G[another_index]+((M[another_index]-1)*FF))])
+        check_counter_sss <- 0;
+        while(check_counter_sss < 1){
+          Data_indiv_prop <- NA_indiv_prop
+          for(kkkk in 1:p){
+            if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
+              pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),
+                                              d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),
+                                    nrow=length(which(is.na(NA_indiv_prop[,kkkk])==TRUE)),byrow=T)
+              Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
+              cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
+              level_indiv_p <- level_indiv[[kkkk]]
+              Data_indiv_prop[is.na(NA_indiv_prop[,kkkk]),kkkk] <- 
+                level_indiv_p[rowSums(Ran_unif_miss_p>cumul_miss_p) + 1L]
+            }
+          }
+          #Check edit rules
+          comb_to_check <- matrix(as.numeric(as.character(t(Data_indiv_prop))),nrow=1)
+          comb_to_check <- cbind(matrix(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),nrow=1),
+                                 comb_to_check)
+          check_counter <- checkSZ(comb_to_check,n_another_index)
+          check_counter_sss <- check_counter_sss + check_counter
+        }
+        Data_indiv[another_index,] <- Data_indiv_prop
+      }
+    }
   }
   
   if(sum(mc==M_to_use_mc)==1){
