@@ -20,14 +20,13 @@ for(mc in 1:n_iter){
       M_t <- rowSums(Ran_unif_M_t>cumul_M_t) + 1L
       Data_house_t <- hh_size
       lambda_g_t <- t(lambda[,G_t])
-      for(tt in 2:(q-1)){ #q is the HH relate variable, can only take one value
+      for(tt in 2:q){
         pr_house_t <- lambda_g_t[,d_k_house_cum[tt]:cumsum(d_k_house)[tt]]
         Ran_unif_t <- runif(nrow(pr_house_t))
         cumul_t <- pr_house_t%*%upper.tri(diag(ncol(pr_house_t)),diag=TRUE)
         level_house_t <- level_house[[tt]]
         Data_house_t <- cbind(Data_house_t,level_house_t[rowSums(Ran_unif_t > cumul_t) + 1L])    
       }
-      Data_house_t <- cbind(Data_house_t,1) #relate is always 1 for household head
       Data_indiv_t <- NULL
       phi_m_g_t <- t(phi[,(rep_G_t+((M_t-1)*FF))])
       for(ttt in 1:p){
@@ -37,12 +36,10 @@ for(mc in 1:n_iter){
         level_indiv_t <- level_indiv[[ttt]]
         Data_indiv_t <- cbind(Data_indiv_t,level_indiv_t[rowSums(Ran_unif_t > cumul_t) + 1L])  
       }
-      #comb_to_check <- data.matrix(Data_indiv_t)
       comb_to_check <- Data_indiv_t
       comb_to_check <- matrix(t(comb_to_check),byrow=T,nrow=n_batch)
-      comb_to_check <- cbind(Data_house_t[,(q-p+1):q],comb_to_check) #add the household head before check
-      check_counter <- Check_SZ_Other(comb_to_check,(hh_size+1)) 
-      Data_indiv_t <- matrix(t(comb_to_check[,-c(1:p)]),byrow=T,ncol=p)
+      check_counter <- Check_SZ_Other(comb_to_check,hh_size) 
+      Data_indiv_t <- matrix(t(comb_to_check),byrow=T,ncol=p)
       
       t_1 <- t_1 + sum(check_counter);
       if(t_1 <= length(which(n_i == hh_size))){
@@ -223,7 +220,7 @@ for(mc in 1:n_iter){
     if(sum(is.na(NA_indiv)) > 0){
       for(sss in 1:n_miss){
         another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
-        n_another_index <- length(another_index) + 1
+        n_another_index <- length(another_index)
         NA_indiv_prop <- NA_indiv[another_index,]
         phi_m_g <- t(phi[,(rep_G[another_index]+((M[another_index]-1)*FF))])
         check_counter_sss <- 0;
@@ -243,8 +240,6 @@ for(mc in 1:n_iter){
           }
           #Check edit rules
           comb_to_check <- matrix(as.numeric(as.character(t(Data_indiv_prop))),nrow=1)
-          comb_to_check <- cbind(matrix(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),nrow=1),
-                                 comb_to_check)
           check_counter <- Check_SZ_Other(comb_to_check,n_another_index)
           check_counter_sss <- check_counter_sss + check_counter
         }

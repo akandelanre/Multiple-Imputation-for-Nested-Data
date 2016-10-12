@@ -15,19 +15,19 @@ rm(list = ls())
 library(DirichletReg)
 source("OtherFunctions/OtherFunctions.R")
 ###### 1: Set global parameters
-n <- 10000; F_true <- 5; S_true <- 2; p <- 3; q <- 2;
+n <- 20000; F_true <- 5; S_true <- 2; p <- 3; q <- 2;
 
 ###### 2a: Set household-level parameters
 U <- matrix(rbeta(F_true,1,8),nrow=F_true); U[F_true] <- 1
 one_min_U <- 1L-U; one_min_U <- c(1,cumprod(one_min_U[1:(F_true-1)]))
 pi_true <- U*one_min_U
 G <- sample(c(1:F_true),n,replace=TRUE,prob=pi_true)
-d_k_house <- c(3,3)
+d_k_house <- c(2,2) #First one mimics household size
 d_k <- 1+cumsum(c(0,d_k_house[-q]))
 lambda_true <- matrix(0,nrow=sum(d_k_house),ncol=F_true)
 for(g in 1:F_true){
-  lambda_true[d_k[1]:cumsum(d_k_house)[1],g] <- t(rdirichlet(1,sample(c(20,300,100),3,replace=FALSE)))
-  lambda_true[d_k[2]:cumsum(d_k_house)[2],g] <- t(rdirichlet(1,sample(c(1,3,20),3,replace=TRUE)))
+  lambda_true[d_k[1]:cumsum(d_k_house)[1],g] <- t(rdirichlet(1,sample(c(20,100),2,replace=TRUE)))
+  lambda_true[d_k[2]:cumsum(d_k_house)[2],g] <- t(rdirichlet(1,sample(c(1,3,10),2,replace=FALSE)))
 }
 
 ###### 2b: Sample households
@@ -78,7 +78,8 @@ for(j in 1:N){
 X_indiv_check_counter = X_house_check_counter = NULL
 for(str_ch in 1:n){
   hh_to_check <- X_indiv[which(house_index==str_ch),]
-  if(Check_SZ_Other(hh_to_check)==1){
+  hh_to_check <- matrix(t(hh_to_check),nrow=1,byrow=T)
+  if(Check_SZ_Other(hh_to_check,h=length(which(house_index==str_ch)))==1){
     X_indiv_check_counter = c(X_indiv_check_counter,which(house_index==str_ch))
     X_house_check_counter = c(X_house_check_counter,str_ch)
   }
@@ -91,8 +92,8 @@ X_house = X_house[X_house_check_counter,]
 #M = M[X_indiv_check_counter]
 
 ###### 4c: Save!!!
-write.csv(X_house, file = "X_house.csv",row.names = FALSE)
-write.csv(X_indiv, file = "X_indiv.csv",row.names = FALSE)
+write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
+write.table(X_indiv, file = "Data/X_indiv.txt",row.names = FALSE)
 ########################## End of Step 1 ########################## 
 
 
@@ -115,7 +116,7 @@ Rcpp::sourceCpp('CppFunctions/prMpost.cpp')
 source("OtherFunctions/OtherFunctions.R")
 X_house <- read.table("Data/X_house.txt",header=TRUE)
 X_indiv <- read.table("Data/X_indiv.txt",header=TRUE)
-level_house <- list(c(1:3),c(1:3))
+level_house <- list(c(1:2),c(1:2))
 level_indiv <- list(c(1:2),c(1:2),c(1:2))
 Data_house <- data.frame(X_house)
 for(i in 1:ncol(Data_house)){
@@ -140,13 +141,13 @@ n_i_index <- rep(n_i,n_i)
 
 ###### 3: Poke holes in Data:: Ignore missing household level data for now 
 set.seed(419)
-n_miss <- 0.35*n
+n_miss <- 0.30*n
 House_miss_index <- NULL
 Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(Data_indiv)
-O_indiv[Indiv_miss_index,others_names] <- rbinom((length(Indiv_miss_index)*p),1,0.15)
+O_indiv[Indiv_miss_index,] <- 1
 Data_indiv[O_indiv==0] <- NA
 NA_indiv <- Data_indiv; NA_house <- Data_house;
 Indiv_miss_index_HH <- sort(Indiv_miss_index_HH)
@@ -215,7 +216,6 @@ source("MCMC.R")
 MCMC_Results <- list(Data_house_truth=Data_house_truth,Data_indiv_truth=Data_indiv_truth,
                      Data_house_cc=Data_house_cc,Data_indiv_cc=Data_indiv_cc,
                      dp_imput_indiv=dp_imput_indiv,dp_imput_house=dp_imput_house,
-                     dp_imput_indiv_nz=dp_imput_indiv_nz,dp_imput_house_nz=dp_imput_house_nz,
                      ALPHA=ALPHA,BETA=BETA,N_ZERO=N_ZERO)
 
 writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
@@ -240,8 +240,6 @@ Data_house_cc <- read.table("Results/Data_house_cc.txt",header=TRUE)
 Data_indiv_cc <- read.table("Results/Data_indiv_cc.txt",header=TRUE)
 dp_imput_house <- read.table("Results/dp_imput_house.txt",header=TRUE)
 dp_imput_indiv <- read.table("Results/dp_imput_indiv.txt",header=TRUE)
-dp_imput_house_nz <- read.table("Results/dp_imput_house_nz.txt",header=TRUE)
-dp_imput_indiv_nz <- read.table("Results/dp_imput_indiv_nz.txt",header=TRUE)
 N <- nrow(Data_indiv_truth)
 n <- nrow(Data_house_truth)
 n_i <- as.numeric(as.character(Data_house_truth[,1]))
@@ -255,6 +253,11 @@ house_index_cc <- rep(c(1:n_cc),n_i_cc)
 
 
 ###### 2: Calculate probabilities that depend on relationship variable from original data
+
+
+
+
+
 Probs <- matrix(0,nrow=22)
 n_row_2 <- length(which(n_i==1))
 n_row_3 <- length(which(n_i==2))
