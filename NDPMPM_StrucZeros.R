@@ -15,7 +15,7 @@ rm(list = ls())
 library(DirichletReg)
 source("OtherFunctions/OtherFunctions.R")
 ###### 1: Set global parameters
-n <- 20000; F_true <- 5; S_true <- 2; p <- 3; q <- 2;
+n <- 20000; F_true <- 5; S_true <- 3; p <- 3; q <- 2;
 
 ###### 2a: Set household-level parameters
 U <- matrix(rbeta(F_true,1,8),nrow=F_true); U[F_true] <- 1
@@ -56,12 +56,18 @@ for(j in 1:N){
 phi_true <- array(0,dim=c(sum(d_k_indiv),S_true,F_true))
 for(m in 1:S_true){
   for(g in 1:F_true){
-    phi_true[d_k_gm[1]:cumsum(d_k_indiv)[1],m,g] <- c(0.2,0.8)
-    phi_true[d_k_gm[2]:cumsum(d_k_indiv)[2],m,g] <- c(0.3,0.7)
     if(m==1){
+      phi_true[d_k_gm[1]:cumsum(d_k_indiv)[1],m,g] <- c(0.2,0.8)
+      phi_true[d_k_gm[2]:cumsum(d_k_indiv)[2],m,g] <- c(0.3,0.7)
       phi_true[d_k_gm[3]:cumsum(d_k_indiv)[3],m,g] <- c(0.4,0.6)
-    } else{
-      phi_true[d_k_gm[3]:cumsum(d_k_indiv)[3],m,g] <- c(0.6,0.4)
+    } else if(m==2){
+      phi_true[d_k_gm[1]:cumsum(d_k_indiv)[1],m,g] <- c(0.2,0.8)
+      phi_true[d_k_gm[2]:cumsum(d_k_indiv)[2],m,g] <- c(0.7,0.3)
+      phi_true[d_k_gm[3]:cumsum(d_k_indiv)[3],m,g] <- c(0.4,0.6)
+    } else {
+      phi_true[d_k_gm[1]:cumsum(d_k_indiv)[1],m,g] <- c(0.4,0.6)
+      phi_true[d_k_gm[2]:cumsum(d_k_indiv)[2],m,g] <- c(0.3,0.7)
+      phi_true[d_k_gm[3]:cumsum(d_k_indiv)[3],m,g] <- c(0.2,0.8)
     }
   }
 }
@@ -141,18 +147,35 @@ n_i_index <- rep(n_i,n_i)
 
 ###### 3: Poke holes in Data:: Ignore missing household level data for now 
 set.seed(419)
-n_miss <- 0.30*n
-House_miss_index <- NULL
-Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
-Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
-O_indiv <- matrix(1,ncol=p,nrow=N)
-colnames(O_indiv) <- colnames(Data_indiv)
-O_indiv[Indiv_miss_index,] <- 1
-Data_indiv[O_indiv==0] <- NA
+n_miss <- 0.35*n
+House_miss_index <- sample(1:n,n_miss,replace=FALSE)
+Indiv_miss_index <- which(is.element(house_index,House_miss_index)==TRUE) #already sorted
+for(i in 1:n_miss){
+  another_index <- which(is.element(house_index,House_miss_index[i])==TRUE)
+  sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
+  if(i <= (0.25*n_miss)){
+    Data_indiv[sub_sample,1] <- NA
+  }
+  if(i > (0.25*n_miss) & i <= (0.5*n_miss)){
+    Data_indiv[sub_sample,2] <- NA
+  }
+  if(i > (0.5*n_miss) & i <= (0.75*n_miss)){
+    Data_indiv[sub_sample,3] <- NA
+  }
+  if(i > (0.75*n_miss) & i <= (0.85*n_miss)){
+    Data_indiv[sub_sample,c(1,2)] <- NA
+  }
+  if(i > (0.85*n_miss) & i <= (0.95*n_miss)){
+    Data_indiv[sub_sample,c(2,3)] <- NA
+  }
+  if(i > (0.95*n_miss)){
+    Data_indiv[sub_sample,c(1,3)] <- NA
+  }
+}
 NA_indiv <- Data_indiv; NA_house <- Data_house;
-Indiv_miss_index_HH <- sort(Indiv_miss_index_HH)
+House_miss_index <- sort(House_miss_index)
 Data_indiv_cc <- Data_indiv[-Indiv_miss_index,]
-Data_house_cc <- Data_house[-Indiv_miss_index_HH,]
+Data_house_cc <- Data_house[-House_miss_index,]
 
 
 ###### 4: Calculate observed proportions and number of categories for each variable
@@ -174,8 +197,8 @@ n_batch <- 10000 #sample impossibles in batches before checking constraints
 
 
 ###### 6: Initialize chain
-FF <- 20
-SS <- 15
+FF <- 5
+SS <- 3
 alpha <- beta <- 1
 a_kdk <- 1
 a_alpha <- b_alpha <- a_beta <- b_beta <- 0.25
@@ -250,434 +273,134 @@ N_cc <- nrow(Data_indiv_cc)
 n_cc <- nrow(Data_house_cc)
 n_i_cc <- as.numeric(as.character(Data_house_cc[,1]))
 house_index_cc <- rep(c(1:n_cc),n_i_cc)
+all_biprcomb_indiv_indiv <- combn(p,2)
+all_triprcomb_indiv_indiv <- combn(p,3)
 
 
-###### 2: Calculate probabilities that depend on relationship variable from original data
-
-
-
-
-
-Probs <- matrix(0,nrow=22)
-n_row_2 <- length(which(n_i==1))
-n_row_3 <- length(which(n_i==2))
-n_row_4 <- length(which(n_i==3))
-samp_size <- matrix(c(n_row_2,n_row_3,n_row_4,rep(n,19)),22,1)
-for(kk in 1:n){
-  hh_check <- Data_house_truth[kk,(q-p+1):q]
-  colnames(hh_check) <- colnames(Data_indiv_truth)
-  hh_check <- rbind(hh_check,Data_indiv_truth[which(house_index==kk),])
-  hh_check <- data.frame(Owner=Data_house_truth[kk,"Owner"],hh_check)
-  if(nrow(hh_check)==2 && hh_check[1,"Race"]==hh_check[2,"Race"]){
-    Probs[1] <- Probs[1] + 1 #All same race, n_i = 2
+###### 2a: Compute marginal probs for individuals
+dp_qbarMmarg <- dp_bMmarg <- dp_ubarMmarg <- NULL
+margprnomiss <- margvnomiss <- NULL
+for(j in 1:p){
+  dp_margpr_j <- matrix(0,nrow=mm,ncol=length(unique(Data_indiv_truth[,j])))
+  dp_margv_j <- matrix(0,nrow=mm,ncol=length(unique(Data_indiv_truth[,j])))
+  for(k in 1:mm){
+    k_imp <- dp_imput_indiv[((N*(k-1))+1):(N*k),]
+    dp_margpr_j[k,] <- as.data.frame(table(k_imp[,j]))$Freq/dim(k_imp)[1]
+    dp_margv_j[k,] <- (dp_margpr_j[k,]*(1-dp_margpr_j[k,]))/dim(k_imp)[1]
   }
-  if(nrow(hh_check)==3 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-     hh_check[2,"Race"]==hh_check[3,"Race"]){
-    Probs[2] <- Probs[2] + 1 #All same race, n_i = 3
-  }
-  if(nrow(hh_check)==4 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-     hh_check[2,"Race"]==hh_check[3,"Race"]&&hh_check[3,"Race"]==hh_check[4,"Race"]){
-    Probs[3] <- Probs[3] + 1 #All same race, n_i = 4
-  }
-  if(sum(hh_check[,"Relate"]==2)>=1){
-    Probs[4] <- Probs[4] + 1 #Spouse present
-  }
-  if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-    Probs[5] <- Probs[5] + 1 #Spouse with white HH
-  }
-  if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==2)>=1){
-    Probs[6] <- Probs[6] + 1 #Spouse with black HH
-  }
-  if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-     sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-    Probs[7] <- Probs[7] + 1 #White Couple
-  }
-  if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-     sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1 && hh_check[1,"Owner"] == 1){
-    Probs[8] <- Probs[8] + 1 #White Couple, own
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]==
-         hh_check[hh_check[,"Relate"]==2,"Race"])==1){
-    Probs[9] <- Probs[9] + 1 #Same race couple
-  }
-  if((sum(hh_check[hh_check[,"Relate"]==1,"Race"]==1)==1 && 
-     sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1) |
-     sum(hh_check[hh_check[,"Relate"]==2,"Race"]==1)==1 && 
-     sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1){
-    Probs[10] <- Probs[10] + 1 #White-nonwhite couple
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1 && 
-     sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1 && hh_check[1,"Owner"]==1){
-    Probs[11] <- Probs[11] + 1 #Non-white couple, own
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==5,"Gender"]==2)==1 &&
-     length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-    Probs[12] <- Probs[12] + 1 #Only mother    
-  }
-  if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-    Probs[13] <- Probs[13] + 1 #Only one parent   
-  }
-  if(sum(hh_check[,"Relate"]==3)>=1){
-    Probs[14] <- Probs[14] + 1 #Children present  
-  }
-  if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])>=1){
-    Probs[15] <- Probs[15] + 1 #At least one parent present  
-  }
-  if(sum(hh_check[,"Relate"]==7)>=1){
-    Probs[16] <- Probs[16] + 1 #Siblings present  
-  }
-  if(sum(hh_check[,"Relate"]==9)>=1){
-    Probs[17] <- Probs[17] + 1 #Grandchild present  
-  }
-  if(ifelse(sum(hh_check[,"Relate"]==3)>=1,1,0)+ ifelse(sum(hh_check[,"Relate"]==5)>=1,1,0)+
-     ifelse(sum(hh_check[,"Relate"]==9)>=1,1,0)>=2){
-    Probs[18] <- Probs[18] + 1 #Three generations present  
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]==
-         hh_check[hh_check[,"Relate"]==2,"Age"])==1){
-    Probs[19] <- Probs[19] + 1 #Same age couple
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]>hh_check[hh_check[,"Relate"]==2,"Age"])==1 &&
-     sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)==1){
-    Probs[20] <- Probs[20] + 1 #HH older than spouse, white HH
-  }
-  if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]==1)==1){
-    Probs[21] <- Probs[21] + 1 #Non Hisp HH
-  }
-  if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]!=1 & hh_check[,"Race"]==1)==1){
-    Probs[22] <- Probs[22] + 1 #White HH with hisp origin
-  }
+  dp_qbarMmarg <- rbind(dp_qbarMmarg,matrix(apply(dp_margpr_j,2,mean),ncol=1))
+  dp_bMmarg <- rbind(dp_bMmarg,matrix(apply(dp_margpr_j,2,var),ncol=1))
+  dp_ubarMmarg <- rbind(dp_ubarMmarg,matrix(apply(dp_margv_j,2,mean),ncol=1))
+  
+  margprnomiss_j <- as.data.frame(table(Data_indiv_truth[,j]))$Freq/dim(Data_indiv_truth)[1]
+  margprnomiss_j <- matrix(margprnomiss_j,ncol=1)
+  margvnomiss_j <- (margprnomiss_j*(1-margprnomiss_j))/dim(Data_indiv_truth)[1]
+  margvnomiss_j <- matrix(margvnomiss_j,ncol=1)
+  margprnomiss <- rbind(margprnomiss,margprnomiss_j)
+  margvnomiss <- rbind(margvnomiss,margvnomiss_j)
 }
-Probs <- Probs/samp_size
-V <- (Probs*(1-Probs))/samp_size
-CIntLower <- Probs + (qnorm(0.025)*sqrt(V))
-CIntUpper <- Probs - (qnorm(0.025)*sqrt(V))
-CInt <- cbind(CIntLower,CIntUpper)
 
 
-###### 3: Calculate probabilities that depend on relationship variable from complete-case data
-Probs_cc <- matrix(0,nrow=22)
-n_row_2_cc <- length(which(n_i_cc==1))
-n_row_3_cc <- length(which(n_i_cc==2))
-n_row_4_cc <- length(which(n_i_cc==3))
-samp_size_cc <- matrix(c(n_row_2_cc,n_row_3_cc,n_row_4_cc,rep(n_cc,19)),22,1)
-for(kk in 1:n_cc){
-  hh_check <- Data_house_cc[kk,(q-p+1):q]
-  colnames(hh_check) <- colnames(Data_indiv_cc)
-  hh_check <- rbind(hh_check,Data_indiv_cc[which(house_index_cc==kk),])
-  hh_check <- data.frame(Owner=Data_house_cc[kk,"Owner"],hh_check)
-  if(nrow(hh_check)==2 && hh_check[1,"Race"]==hh_check[2,"Race"]){
-    Probs_cc[1] <- Probs_cc[1] + 1 #All same race, n_i = 2
+# Compute Bivariate Probs
+dp_qbarMbi <- dp_bMbi <- dp_ubarMbi <- NULL
+biprnomiss <- bivnomiss <- NULL
+for(j in 1:dim(all_biprcomb_indiv)[2]){
+  comb_j <- all_biprcomb_indiv[,j]
+  dp_bipr_j <- matrix(0,nrow=mm,ncol=length(table(Data_indiv_truth[,comb_j])))
+  dp_biv_j <- matrix(0,nrow=mm,ncol=length(table(Data_indiv_truth[,comb_j])))
+  for(k in 1:mm){
+    k_imp <- dp_imput_indiv[((N*(k-1))+1):(N*k),]
+    dp_bipr_j[k,] <- as.data.frame(table(k_imp[,comb_j]))$Freq/dim(k_imp)[1]
+    dp_biv_j[k,] <- (dp_bipr_j[k,]*(1-dp_bipr_j[k,]))/dim(k_imp)[1]
   }
-  if(nrow(hh_check)==3 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-     hh_check[2,"Race"]==hh_check[3,"Race"]){
-    Probs_cc[2] <- Probs_cc[2] + 1 #All same race, n_i = 3
-  }
-  if(nrow(hh_check)==4 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-     hh_check[2,"Race"]==hh_check[3,"Race"]&&hh_check[3,"Race"]==hh_check[4,"Race"]){
-    Probs_cc[3] <- Probs_cc[3] + 1 #All same race, n_i = 4
-  }
-  if(sum(hh_check[,"Relate"]==2)>=1){
-    Probs_cc[4] <- Probs_cc[4] + 1 #Spouse present
-  }
-  if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-    Probs_cc[5] <- Probs_cc[5] + 1 #Spouse with white HH
-  }
-  if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==2)>=1){
-    Probs_cc[6] <- Probs_cc[6] + 1 #Spouse with black HH
-  }
-  if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-     sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-    Probs_cc[7] <- Probs_cc[7] + 1 #White Couple
-  }
-  if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-     sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1 && hh_check[1,"Owner"] == 1){
-    Probs_cc[8] <- Probs_cc[8] + 1 #White Couple, own
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]==
-         hh_check[hh_check[,"Relate"]==2,"Race"])==1){
-    Probs_cc[9] <- Probs_cc[9] + 1 #Same race couple
-  }
-  if((sum(hh_check[hh_check[,"Relate"]==1,"Race"]==1)==1 && 
-      sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1) |
-     sum(hh_check[hh_check[,"Relate"]==2,"Race"]==1)==1 && 
-     sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1){
-    Probs_cc[10] <- Probs_cc[10] + 1 #White-nonwhite couple
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1 && 
-     sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1 && hh_check[1,"Owner"]==1){
-    Probs_cc[11] <- Probs_cc[11] + 1 #Non-white couple, own
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==5,"Gender"]==2)==1 &&
-     length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-    Probs_cc[12] <- Probs_cc[12] + 1 #Only mother    
-  }
-  if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-    Probs_cc[13] <- Probs_cc[13] + 1 #Only one parent   
-  }
-  if(sum(hh_check[,"Relate"]==3)>=1){
-    Probs_cc[14] <- Probs_cc[14] + 1 #Children present  
-  }
-  if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])>=1){
-    Probs_cc[15] <- Probs_cc[15] + 1 #At least one parent present 
-  }
-  if(sum(hh_check[,"Relate"]==7)>=1){
-    Probs_cc[16] <- Probs_cc[16] + 1 #Siblings present  
-  }
-  if(sum(hh_check[,"Relate"]==9)>=1){
-    Probs_cc[17] <- Probs_cc[17] + 1 #Grandchild present  
-  }
-  if(ifelse(sum(hh_check[,"Relate"]==3)>=1,1,0)+ ifelse(sum(hh_check[,"Relate"]==5)>=1,1,0)+
-     ifelse(sum(hh_check[,"Relate"]==9)>=1,1,0)>=2){
-    Probs_cc[18] <- Probs_cc[18] + 1 #Three generations present  
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]==
-         hh_check[hh_check[,"Relate"]==2,"Age"])==1){
-    Probs_cc[19] <- Probs_cc[19] + 1 #Same age couple
-  }
-  if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]>hh_check[hh_check[,"Relate"]==2,"Age"])==1 &&
-     sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)==1){
-    Probs_cc[20] <- Probs_cc[20] + 1 #HH older than spouse, white HH
-  }
-  if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]==1)==1){
-    Probs_cc[21] <- Probs_cc[21] + 1 #Non Hisp HH
-  }
-  if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]!=1 & hh_check[,"Race"]==1)==1){
-    Probs_cc[22] <- Probs_cc[22] + 1 #White HH with hisp origin
-  }
+  dp_qbarMbi <- rbind(dp_qbarMbi,matrix(apply(dp_bipr_j,2,mean),ncol=1))
+  dp_bMbi <- rbind(dp_bMbi,matrix(apply(dp_bipr_j,2,var),ncol=1))
+  dp_ubarMbi <- rbind(dp_ubarMbi,matrix(apply(dp_biv_j,2,mean),ncol=1))
+  
+  biprnomiss_j <- as.data.frame(table(Data_indiv_truth[,comb_j]))$Freq/dim(Data_indiv_truth)[1]
+  biprnomiss_j <- matrix(biprnomiss_j,ncol=1)
+  bivnomiss_j <- (biprnomiss_j*(1-biprnomiss_j))/dim(Data_indiv_truth)[1]
+  bivnomiss_j <- matrix(bivnomiss_j,ncol=1)
+  biprnomiss <- rbind(biprnomiss,biprnomiss_j)
+  bivnomiss <- rbind(bivnomiss,bivnomiss_j)
 }
-Probs_cc <- Probs_cc/samp_size_cc
-V_cc <- (Probs_cc*(1-Probs_cc))/samp_size_cc
-CIntLower_cc <- Probs_cc + (qnorm(0.025)*sqrt(V_cc))
-CIntUpper_cc <- Probs_cc - (qnorm(0.025)*sqrt(V_cc))
-CInt_cc <- cbind(CIntLower_cc,CIntUpper_cc)
 
-
-###### 4: Calculate probabilities that depend on relationship variable from imputed data
-Probs_syn <- matrix(0,nrow=22,ncol=mm)
-V_syn <- matrix(0,nrow=22,ncol=mm)
-for(k in 1:mm){
-  k_imp_house <- dp_imput_house[((n*(k-1))+1):(n*k),]
-  k_imp_indiv <- dp_imput_indiv[((N*(k-1))+1):(N*k),]
-  new_n_i <- as.numeric(as.character(k_imp_house[,"HHSize"]))
-  new_house_index <- rep(c(1:n),new_n_i)
-  for(kk in 1:n){
-    hh_check <- k_imp_house[kk,(q-p+1):q]
-    colnames(hh_check) <- colnames(k_imp_indiv)
-    hh_check <- rbind(hh_check,k_imp_indiv[which(new_house_index==kk),])
-    hh_check <- data.frame(Owner=k_imp_house[kk,"Owner"],hh_check)
-    if(nrow(hh_check)==2 && hh_check[1,"Race"]==hh_check[2,"Race"]){
-      Probs_syn[1,k] <- Probs_syn[1,k] + 1 #All same race, n_i = 2
-    }
-    if(nrow(hh_check)==3 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-       hh_check[2,"Race"]==hh_check[3,"Race"]){
-      Probs_syn[2,k] <- Probs_syn[2,k] + 1 #All same race, n_i = 3
-    }
-    if(nrow(hh_check)==4 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-       hh_check[2,"Race"]==hh_check[3,"Race"]&&hh_check[3,"Race"]==hh_check[4,"Race"]){
-      Probs_syn[3,k] <- Probs_syn[3,k] + 1 #All same race, n_i = 4
-    }
-    if(sum(hh_check[,"Relate"]==2)>=1){
-      Probs_syn[4,k] <- Probs_syn[4,k] + 1 #Spouse present
-    }
-    if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-      Probs_syn[5,k] <- Probs_syn[5,k] + 1 #Spouse with white HH
-    }
-    if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==2)>=1){
-      Probs_syn[6,k] <- Probs_syn[6,k] + 1 #Spouse with black HH
-    }
-    if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-       sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-      Probs_syn[7,k] <- Probs_syn[7,k] + 1 #White Couple
-    }
-    if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-       sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1 && hh_check[1,"Owner"] == 1){
-      Probs_syn[8,k] <- Probs_syn[8,k] + 1 #White Couple, own
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]==
-           hh_check[hh_check[,"Relate"]==2,"Race"])==1){
-      Probs_syn[9,k] <- Probs_syn[9,k] + 1 #Same race couple
-    }
-    if((sum(hh_check[hh_check[,"Relate"]==1,"Race"]==1)==1 && 
-        sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1) |
-       sum(hh_check[hh_check[,"Relate"]==2,"Race"]==1)==1 && 
-       sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1){
-      Probs_syn[10,k] <- Probs_syn[10,k] + 1 #White-nonwhite couple
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1 && 
-       sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1 && hh_check[1,"Owner"]==1){
-      Probs_syn[11,k] <- Probs_syn[11,k] + 1 #Non-white couple, own
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==5,"Gender"]==2)==1 &&
-       length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-      Probs_syn[12,k] <- Probs_syn[12,k] + 1 #Only mother    
-    }
-    if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-      Probs_syn[13,k] <- Probs_syn[13,k] + 1 #Only one parent   
-    }
-    if(sum(hh_check[,"Relate"]==3)>=1){
-      Probs_syn[14,k] <- Probs_syn[14,k] + 1 #Children present  
-    }
-    if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])>=1){
-      Probs_syn[15,k] <- Probs_syn[15,k] + 1 #At least one parent present 
-    }
-    if(sum(hh_check[,"Relate"]==7)>=1){
-      Probs_syn[16,k] <- Probs_syn[16,k] + 1 #Siblings present  
-    }
-    if(sum(hh_check[,"Relate"]==9)>=1){
-      Probs_syn[17,k] <- Probs_syn[17,k] + 1 #Grandchild present  
-    }
-    if(ifelse(sum(hh_check[,"Relate"]==3)>=1,1,0)+ ifelse(sum(hh_check[,"Relate"]==5)>=1,1,0)+
-       ifelse(sum(hh_check[,"Relate"]==9)>=1,1,0)>=2){
-      Probs_syn[18,k] <- Probs_syn[18,k] + 1 #Three generations present  
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]==
-           hh_check[hh_check[,"Relate"]==2,"Age"])==1){
-      Probs_syn[19,k] <- Probs_syn[19,k] + 1 #Same age couple
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]>hh_check[hh_check[,"Relate"]==2,"Age"])==1 &&
-       sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)==1){
-      Probs_syn[20,k] <- Probs_syn[20,k] + 1 #HH older than spouse, white HH
-    }
-    if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]==1)==1){
-      Probs_syn[21,k] <- Probs_syn[21,k] + 1 #Non Hisp HH
-    }
-    if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]!=1 & hh_check[,"Race"]==1)==1){
-      Probs_syn[22,k] <- Probs_syn[22,k] + 1 #White HH with hisp origin
-    }
+# Compute Trivariate Probs
+dp_qbarMtri <- dp_bMtri <- dp_ubarMtri <- NULL
+triprnomiss <- trivnomiss <- NULL
+for(j in 1:dim(all_triprcomb_indiv)[2]){
+  combtri_j <- all_triprcomb_indiv[,j]
+  dp_tripr_j <- matrix(0,nrow=mm,ncol=length(table(Data_indiv_truth[,combtri_j])))
+  dp_triv_j <- matrix(0,nrow=mm,ncol=length(table(Data_indiv_truth[,combtri_j])))
+  for(k in 1:mm){
+    k_imp <- dp_imput_indiv[((N*(k-1))+1):(N*k),]
+    dp_tripr_j[k,] <- as.data.frame(table(k_imp[,combtri_j]))$Freq/dim(k_imp)[1]
+    dp_triv_j[k,] <- (dp_tripr_j[k,]*(1-dp_tripr_j[k,]))/dim(k_imp)[1]
   }
-  Probs_syn[,k] <- Probs_syn[,k]/samp_size
-  V_syn[,k] <- (Probs_syn[,k]*(1-Probs_syn[,k]))/samp_size
+  dp_qbarMtri <- rbind(dp_qbarMtri,matrix(apply(dp_tripr_j,2,mean),ncol=1))
+  dp_bMtri <- rbind(dp_bMtri,matrix(apply(dp_tripr_j,2,var),ncol=1))
+  dp_ubarMtri <- rbind(dp_ubarMtri,matrix(apply(dp_triv_j,2,mean),ncol=1))
+  
+  triprnomiss_j <- as.data.frame(table(Data_indiv_truth[,combtri_j]))$Freq/dim(Data_indiv_truth)[1]
+  triprnomiss_j <- matrix(triprnomiss_j,ncol=1)
+  trivnomiss_j <- (triprnomiss_j*(1-triprnomiss_j))/dim(Data_indiv_truth)[1]
+  trivnomiss_j <- matrix(trivnomiss_j,ncol=1)
+  triprnomiss <- rbind(triprnomiss,triprnomiss_j)
+  trivnomiss <- rbind(trivnomiss,trivnomiss_j)
 }
-dp_qbar <- rowMeans(Probs_syn)
-dp_b <- apply(Probs_syn,1,var)
-dp_ubar <- rowMeans(V_syn)
-dp_t <- dp_ubar + (dp_b*(mm+1)/mm) #dp_t <- dp_ubar + (dp_b/mm) for synthetic data
-dp_r <- dp_ubar/dp_b
-dp_v <- (mm-1)*((1+((mm/(mm+1))*dp_r))^2) #dp_v <- (mm-1)*((1+((mm)*dp_r))^2) for synthetic data
-CIntLower_dp <- dp_qbar + (qt(0.025,dp_v)*sqrt(dp_t))
-CIntUpper_dp <- dp_qbar - (qt(0.025,dp_v)*sqrt(dp_t))
-CInt_syn <- cbind(CIntLower_dp,CIntUpper_dp)
+
+margprnomisssim <- margprnomiss
+margvnomisssim <- margvnomiss
+biprnomisssim <- biprnomiss
+bivnomisssim <- bivnomiss
+triprnomisssim <- triprnomiss
+trivnomisssim <- trivnomiss
+
+dp_qbarmargsim <- dp_qbarMmarg
+dp_bmargsim <- dp_bMmarg
+dp_ubarmargsim <- dp_ubarMmarg
+dp_qbarbisim <- dp_qbarMbi
+dp_bbisim <- dp_bMbi
+dp_ubarbisim <- dp_ubarMbi
+dp_qbartrisim <- dp_qbarMtri
+dp_btrisim <- dp_bMtri
+dp_ubartrisim <- dp_ubarMtri
 
 
-###### 5: Calculate probabilities that depend on relationship variable from imputed data (No strucural zeros model)
-Probs_syn_nz <- matrix(0,nrow=22,ncol=mm)
-V_syn_nz <- matrix(0,nrow=22,ncol=mm)
-for(k in 1:mm){
-  k_imp_house <- dp_imput_house_nz[((n*(k-1))+1):(n*k),]
-  k_imp_indiv <- dp_imput_indiv_nz[((N*(k-1))+1):(N*k),]
-  new_n_i <- as.numeric(as.character(k_imp_house[,"HHSize"]))
-  new_house_index <- rep(c(1:n),new_n_i)
-  for(kk in 1:n){
-    hh_check <- k_imp_house[kk,(q-p+1):q]
-    colnames(hh_check) <- colnames(k_imp_indiv)
-    hh_check <- rbind(hh_check,k_imp_indiv[which(new_house_index==kk),])
-    hh_check <- data.frame(Owner=k_imp_house[kk,"Owner"],hh_check)
-    if(nrow(hh_check)==2 && hh_check[1,"Race"]==hh_check[2,"Race"]){
-      Probs_syn_nz[1,k] <- Probs_syn_nz[1,k] + 1 #All same race, n_i = 2
-    }
-    if(nrow(hh_check)==3 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-       hh_check[2,"Race"]==hh_check[3,"Race"]){
-      Probs_syn_nz[2,k] <- Probs_syn_nz[2,k] + 1 #All same race, n_i = 3
-    }
-    if(nrow(hh_check)==4 && hh_check[1,"Race"]==hh_check[2,"Race"]&&
-       hh_check[2,"Race"]==hh_check[3,"Race"]&&hh_check[3,"Race"]==hh_check[4,"Race"]){
-      Probs_syn_nz[3,k] <- Probs_syn_nz[3,k] + 1 #All same race, n_i = 4
-    }
-    if(sum(hh_check[,"Relate"]==2)>=1){
-      Probs_syn_nz[4,k] <- Probs_syn_nz[4,k] + 1 #Spouse present
-    }
-    if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-      Probs_syn_nz[5,k] <- Probs_syn_nz[5,k] + 1 #Spouse with white HH
-    }
-    if(sum(hh_check[,"Relate"]==2)>=1 && sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==2)>=1){
-      Probs_syn_nz[6,k] <- Probs_syn_nz[6,k] + 1 #Spouse with black HH
-    }
-    if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-       sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1){
-      Probs_syn_nz[7,k] <- Probs_syn_nz[7,k] + 1 #White Couple
-    }
-    if(sum(hh_check[,"Relate"]==2 & hh_check[,"Race"]==1)>=1 &&
-       sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)>=1 && hh_check[1,"Owner"] == 1){
-      Probs_syn_nz[8,k] <- Probs_syn_nz[8,k] + 1 #White Couple, own
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]==
-           hh_check[hh_check[,"Relate"]==2,"Race"])==1){
-      Probs_syn_nz[9,k] <- Probs_syn_nz[9,k] + 1 #Same race couple
-    }
-    if((sum(hh_check[hh_check[,"Relate"]==1,"Race"]==1)==1 && 
-        sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1) |
-       sum(hh_check[hh_check[,"Relate"]==2,"Race"]==1)==1 && 
-       sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1){
-      Probs_syn_nz[10,k] <- Probs_syn_nz[10,k] + 1 #White-nonwhite couple
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Race"]!=1)==1 && 
-       sum(hh_check[hh_check[,"Relate"]==2,"Race"]!=1)==1 && hh_check[1,"Owner"]==1){
-      Probs_syn_nz[11,k] <- Probs_syn_nz[11,k] + 1 #Non-white couple, own
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==5,"Gender"]==2)==1 &&
-       length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-      Probs_syn_nz[12,k] <- Probs_syn_nz[12,k] + 1 #Only mother    
-    }
-    if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])==1){
-      Probs_syn_nz[13,k] <- Probs_syn_nz[13,k] + 1 #Only one parent   
-    }
-    if(sum(hh_check[,"Relate"]==3)>=1){
-      Probs_syn_nz[14,k] <- Probs_syn_nz[14,k] + 1 #Children present  
-    }
-    if(length(hh_check[hh_check[,"Relate"]==5,"Gender"])>=1){
-      Probs_syn_nz[15,k] <- Probs_syn_nz[15,k] + 1 #At least one parent present 
-    }
-    if(sum(hh_check[,"Relate"]==7)>=1){
-      Probs_syn_nz[16,k] <- Probs_syn_nz[16,k] + 1 #Siblings present  
-    }
-    if(sum(hh_check[,"Relate"]==9)>=1){
-      Probs_syn_nz[17,k] <- Probs_syn_nz[17,k] + 1 #Grandchild present  
-    }
-    if(ifelse(sum(hh_check[,"Relate"]==3)>=1,1,0)+ ifelse(sum(hh_check[,"Relate"]==5)>=1,1,0)+
-       ifelse(sum(hh_check[,"Relate"]==9)>=1,1,0)>=2){
-      Probs_syn_nz[18,k] <- Probs_syn_nz[18,k] + 1 #Three generations present  
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]==
-           hh_check[hh_check[,"Relate"]==2,"Age"])==1){
-      Probs_syn_nz[19,k] <- Probs_syn_nz[19,k] + 1 #Same age couple
-    }
-    if(sum(hh_check[hh_check[,"Relate"]==1,"Age"]>hh_check[hh_check[,"Relate"]==2,"Age"])==1 &&
-       sum(hh_check[,"Relate"]==1 & hh_check[,"Race"]==1)==1){
-      Probs_syn_nz[20,k] <- Probs_syn_nz[20,k] + 1 #HH older than spouse, white HH
-    }
-    if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]==1)==1){
-      Probs_syn_nz[21,k] <- Probs_syn_nz[21,k] + 1 #Non Hisp HH
-    }
-    if(sum(hh_check[,"Relate"]==1 & hh_check[,"Hisp"]!=1 & hh_check[,"Race"]==1)==1){
-      Probs_syn_nz[22,k] <- Probs_syn_nz[22,k] + 1 #White HH with hisp origin
-    }
-  }
-  Probs_syn_nz[,k] <- Probs_syn_nz[,k]/samp_size
-  V_syn_nz[,k] <- (Probs_syn_nz[,k]*(1-Probs_syn_nz[,k]))/samp_size
-}
-dp_qbar_nz <- rowMeans(Probs_syn_nz)
-dp_b_nz <- apply(Probs_syn_nz,1,var)
-dp_ubar_nz <- rowMeans(V_syn_nz)
-dp_t_nz <- dp_ubar_nz + (dp_b_nz*(mm+1)/mm) #dp_t_nz <- dp_ubar_nz + (dp_b_nz/mm) for synthetic data
-dp_r_nz <- dp_ubar_nz/dp_b_nz
-dp_v_nz <- (mm-1)*((1+((mm/(mm+1))*dp_r_nz))^2) #dp_v_nz <- (mm-1)*((1+((mm)*dp_r_nz))^2) for synthetic data
-CIntLower_dp_nz <- dp_qbar_nz + (qt(0.025,dp_v_nz)*sqrt(dp_t_nz))
-CIntUpper_dp_nz <- dp_qbar_nz - (qt(0.025,dp_v_nz)*sqrt(dp_t_nz))
-CInt_syn_nz <- cbind(CIntLower_dp_nz,CIntUpper_dp_nz)
 
 
-###### 6: Combine and save!!!
-CompareProbs <- cbind(Probs,Probs_cc,dp_qbar,dp_qbar_nz,CInt,CInt_cc,CInt_syn,CInt_syn_nz)
-#CompareProbs <- CompareProbs[-3,] #Remove households of size 4 for now
-colnames(CompareProbs) = c("Orig-Data Q","CC-Data Q","Model Q","No Struc. Q","Orig-Data L","Orig-Data U",
-                           "CC-Data L","CC-Data U","Model L","Model U","No Struc. L","No Struc. U")
-write.table(CompareProbs,"Results/CompareProbs.txt",row.names = FALSE)
-CompareProbs <- read.table("Results/CompareProbs.txt",header=TRUE)
-round(CompareProbs,3)
-#round(CompareProbs[,-c(2,6,7)],3)
-#library(xtable)
-#xtable(round(CompareProbs[,c(3,8,9)],3),digits = 3)
+
+
+
+
+
+
+
+
+
+###### 3: Combine and save!!!
+## Check Convergence to truth
+comparemargindiv = round(cbind(dp_qbarmargsim,margprnomisssim),4)
+colnames(comparemargindiv) = c("DP","NoMiss")
+comparebiindiv = round(cbind(dp_qbarbisim,biprnomisssim),4)
+colnames(comparebiindiv) = c("DP","NoMiss")
+comparetriindiv = round(cbind(dp_qbartrisim,triprnomisssim),4)
+colnames(comparetriindiv) = c("DP","NoMiss")
+
+rbind(comparemargindiv,comparebiindiv,comparetriindiv)
+
+
+plot(comparemargindiv[,2],comparemargindiv[,1],col="red",lwd=1,
+     xlab="Truth",ylab="DP",main="Marginal Probabilities"); grid(nx=20)
+abline(0,1)
+plot(comparebiindiv[,2],comparebiindiv[,1],col="dark blue",lwd=1,
+     xlab="Truth",ylab="DP",main="Bivariate Probabilities"); grid(nx=20)
+abline(0,1)
+plot(comparetriindiv[,2],comparetriindiv[,1],col="black",lwd=1,
+     xlab="Truth",ylab="DP",main="Trivariate Probabilities"); grid(nx=20)
+abline(0,1)
+title("Individual {Within Household} Probabilities", outer=TRUE)
+
 ########################## End of Step 3 ########################## 
 
 

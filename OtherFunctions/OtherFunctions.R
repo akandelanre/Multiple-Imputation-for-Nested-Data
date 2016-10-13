@@ -9,7 +9,7 @@ quick_sort_HH <- function(X=x,P=p,R=r){# X =vector, p =no of variables, r =col i
 
 Check_SZ <- function(Data,h){
   if(h==1){
-    if(Data[1,1] == 2 & Data[1,2] == 2 & Data[1,3] == 1 |
+    if(Data[1,1] == 2 & Data[1,2] == 1 & Data[1,3] == 2 |
        Data[1,1] == 2 & Data[1,2] == 2 & Data[1,3] == 2){
       return(0)
     } else {return(1)} 
