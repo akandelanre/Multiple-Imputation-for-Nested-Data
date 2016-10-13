@@ -122,6 +122,7 @@ Rcpp::sourceCpp('CppFunctions/prGpost.cpp')
 Rcpp::sourceCpp('CppFunctions/prMpost.cpp')
 Rcpp::sourceCpp('CppFunctions/checkSZ.cpp')
 source("OtherFunctions/OtherFunctions.R")
+source("OtherFunctions/NDPMPM_No_StrucZeros.R")
 X_house = read.table("Data/X_house.txt",header=TRUE)
 X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
 level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:100),c(2:12))
@@ -172,13 +173,28 @@ for(i in 1:n_miss){
 }
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(Data_indiv)
-others_names <- c("Gender","Race") #others_names <- c("Gender","Race","Hisp")
+others_names <- c("Gender","Race","Hisp")
 O_indiv[Indiv_miss_index,others_names] <- rbinom((length(Indiv_miss_index)*length(others_names)),1,0.2)
 Data_indiv[O_indiv==0] <- NA
 NA_indiv <- Data_indiv; NA_house <- Data_house;
 Indiv_miss_index_HH <- sort(Indiv_miss_index_HH)
 Data_indiv_cc <- Data_indiv[-Indiv_miss_index,]
 Data_house_cc <- Data_house[-Indiv_miss_index_HH,]
+
+
+###### 4a: Run NDPMPM without structural zeros for comparison
+n_proposed <- 10;
+NDPMPM_results <- fit_NDPMPM(Data_house,Data_indiv,FF=20,SS=15,n_iter=10000,burn_in=8000,MM=n_proposed,struc_zero=TRUE)
+writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
+writeFun(NDPMPM_results)
+
+
+###### 4b: Load the posterior draws for individuals with the missing entries/data
+data_house_post <- read.table("Initial/DATA_HOUSE_MISS.txt",header=TRUE)
+data_indiv_post <- read.table("Initial/DATA_INDIV_MISS.txt",header=TRUE)
+dp_imput_indiv_nz <- read.table("Initial/dp_imput_indiv.txt",header=TRUE)
+dp_imput_house_nz <- read.table("Initial/dp_imput_house.txt",header=TRUE)
 
 
 ###### 4: Fill missing values with starting values
