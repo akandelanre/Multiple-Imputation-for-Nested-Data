@@ -197,8 +197,8 @@ n_batch <- 10000 #sample impossibles in batches before checking constraints
 
 
 ###### 6: Initialize chain
-FF <- 5
-SS <- 3
+FF <- 15
+SS <- 5
 alpha <- beta <- 1
 a_kdk <- 1
 a_alpha <- b_alpha <- a_beta <- b_beta <- 0.25
