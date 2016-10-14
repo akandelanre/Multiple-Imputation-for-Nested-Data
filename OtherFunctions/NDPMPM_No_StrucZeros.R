@@ -114,6 +114,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
   
   n_batch_imp_init <- rep(10,n_miss) #sample imputations in batches before checking constraints
   n_0_reject <- rep(0,n_miss)
+  prop_batch <- 1.2
   
   ###### 5: Run MCMC
   for(mc in 1:n_iter){
@@ -206,7 +207,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
       #Now individuals
       if(sum(is.na(NA_indiv)) > 0){
         for(sss in 1:n_miss){
-          n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*1.2) #no. of batches of imputations to sample
+          n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*prop_batch) #no. of batches of imputations to sample
           n_0_reject[sss] <- 0
           another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
           n_another_index <- length(another_index) + 1

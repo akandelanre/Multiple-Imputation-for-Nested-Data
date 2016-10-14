@@ -9,7 +9,7 @@ for(mc in 1:n_iter){
   Data_indiv_valid <- NULL; Data_house_valid <- NULL
   for(hh_size in sort(unique(n_i))){
     ss <- which(sort(unique(n_i))==hh_size)
-    n_batch <- n_batch_init[ss] + ceiling(n_0[ss]*1.2) #no. of batches of imputations to sample
+    n_batch <- n_batch_init[ss] + ceiling(n_0[ss]*prop_batch) #no. of batches of imputations to sample
     n_0[ss] <- 0
     t_0 <- 0; t_1 <- 0
     while(t_1 < length(which(n_i == hh_size))){
@@ -212,7 +212,7 @@ for(mc in 1:n_iter){
   #Now individuals
   if(sum(is.na(NA_indiv)) > 0){
     for(sss in 1:n_miss){
-      n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*1.2) #no. of batches of imputations to sample
+      n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*prop_batch) #no. of batches of imputations to sample
       n_0_reject[sss] <- 0
       another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
       n_another_index <- length(another_index) + 1

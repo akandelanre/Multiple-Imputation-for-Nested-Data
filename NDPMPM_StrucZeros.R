@@ -233,6 +233,7 @@ n_batch_init <- rep(100,length(level_house[[1]])) #sample impossibles in batches
 n_0 <- rep(0,length(level_house[[1]]))
 n_batch_imp_init <- rep(10,n_miss) #sample imputations in batches before checking constraints
 n_0_reject <- rep(0,n_miss)
+prop_batch <- 1.2
 
 
 ###### 7: Initialize chain
@@ -295,6 +296,7 @@ writeFun(MCMC_Results)
 
 
 ########################## Step 3: Model Assessment ##########################
+rm(list = ls())
 ###### 1: Define parameters and load saved results
 mm <- 10;
 Data_house_truth <- read.table("Results/Data_house_truth.txt",header=TRUE)
