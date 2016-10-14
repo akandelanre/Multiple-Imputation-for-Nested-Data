@@ -7,8 +7,10 @@ for(mc in 1:n_iter){
   G_0 <- NULL; M_0 <- NULL
   Data_indiv_struc <- NULL; Data_house_struc <- NULL
   Data_indiv_valid <- NULL; Data_house_valid <- NULL
-  n_0 <- 0
   for(hh_size in sort(unique(n_i))){
+    ss <- which(sort(unique(n_i))==hh_size)
+    n_batch <- n_batch_init[ss] + ceiling(n_0[ss]*1.2) #no. of batches of imputations to sample
+    n_0[ss] <- 0
     t_0 <- 0; t_1 <- 0
     while(t_1 < length(which(n_i == hh_size))){
       pr_G_t <- lambda[which(level_house[[1]]==hh_size),]*pii #1 is the location of HHsize in level_house
@@ -66,7 +68,7 @@ for(mc in 1:n_iter){
         G_0 <- c(G_0,G_t[which(check_counter_needed==0)])
       }
     }
-    n_0 <- n_0 + t_0
+    n_0[ss] <- n_0[ss] + t_0
   }
   rep_G_0 <- rep(G_0,Data_house_struc[,1])
   row.names(Data_house_struc) <- NULL; row.names(Data_house_valid) <- NULL
@@ -210,10 +212,16 @@ for(mc in 1:n_iter){
   #Now individuals
   if(sum(is.na(NA_indiv)) > 0){
     for(sss in 1:n_miss){
+      n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*1.2) #no. of batches of imputations to sample
+      n_0_reject[sss] <- 0
       another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
       n_another_index <- length(another_index) + 1
       NA_indiv_prop <- NA_indiv[another_index,]
-      phi_m_g <- t(phi[,(rep_G[another_index]+((M[another_index]-1)*FF))])
+      NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
+      NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp),byrow=TRUE,ncol=p)
+      rep_G_prop <- rep(rep_G[another_index],n_batch_imp)
+      rep_M_prop <- rep(M[another_index],n_batch_imp)
+      phi_m_g <- t(phi[,(rep_G_prop+((rep_M_prop-1)*FF))])
       check_counter_sss <- 0;
       while(check_counter_sss < 1){
         Data_indiv_prop <- NA_indiv_prop
@@ -230,13 +238,20 @@ for(mc in 1:n_iter){
           }
         }
         #Check edit rules
-        comb_to_check <- matrix(as.numeric(as.character(t(Data_indiv_prop))),nrow=1)
-        comb_to_check <- cbind(matrix(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),nrow=1),
-                               comb_to_check)
+        comb_to_check <- matrix(t(Data_indiv_prop),nrow=n_batch_imp,byrow=TRUE)
+        comb_to_check_HH <-matrix(rep(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),
+                                      n_batch_imp),nrow=n_batch_imp,byrow = T)
+        comb_to_check <- cbind(comb_to_check_HH,comb_to_check)
         check_counter <- checkSZ(comb_to_check,n_another_index)
-        check_counter_sss <- check_counter_sss + check_counter
+        check_counter_sss <- check_counter_sss + sum(check_counter)
+        if(length(which(check_counter==1))>0){
+          n_0_reject[sss] <- n_0_reject[sss] + length(which(check_counter[1:which(check_counter==1)[1]]==0))
+        } else{
+          n_0_reject[sss] <- n_0_reject[sss] + n_batch_imp
+        }
       }
-      Data_indiv[another_index,] <- Data_indiv_prop
+      Data_indiv[another_index,] <-
+        matrix(comb_to_check[which(check_counter==1)[1],-c(1:p)],byrow=TRUE,ncol=p) #remove household head
     }
   }
   
@@ -263,9 +278,12 @@ for(mc in 1:n_iter){
   cat("Iter=", formatC(mc, width=2, flag=" "),"\t"," ",
       "F=",formatC(length(unique(G)), width=2, flag=" "),"\t",
       "S=",formatC(max(S.occup), width=2, flag=" "),"\t",
-      "alp=",formatC(round(alpha,2), width=1, flag=" "),"\t",
-      "bet=",formatC(round(beta,2), width=1, flag=" "),"\t",
-      "n0=",formatC(round(n_0,2),width=1,flag=""),"\t",
+      #"alp=",formatC(round(alpha,2), width=1, flag=" "),"\t",
+      #"bet=",formatC(round(beta,2), width=1, flag=" "),"\t",
+      "n0=",formatC(round(sum(n_0),2),width=1,flag=""),"\t",
+      "Eff. n0=",formatC(round((sum(n_0_reject)+sum(n_0)),2),width=1,flag=""),"\t",
       "time= ",formatC(round(elapsed_time,2),width=1,flag=""),"\n", sep = " ")
+  
+  
 }
 

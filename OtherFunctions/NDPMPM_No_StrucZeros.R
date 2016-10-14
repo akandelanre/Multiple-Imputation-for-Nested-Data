@@ -99,6 +99,8 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
   one_min_V = cbind(1,t(apply(one_min_V[,-SS],1,cumprod)))
   pii = U*one_min_U
   omega = V*one_min_V
+  d_k_house_cum = 1+cumsum(c(0,d_k_house[,-q]))
+  d_k_indiv_cum = 1+cumsum(c(0,d_k_indiv[,-p]))
   dp_imput_house <- dp_imput_indiv <- NULL
   M_to_use = seq((burn_in+1), n_iter, (length(c((burn_in+1):n_iter))/(5*MM)))
   M_to_use_mc = sample(M_to_use,MM,replace=FALSE)
@@ -109,6 +111,9 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
   #OMEGA = matrix(0,ncol=ncol(omega),nrow=nrow(omega))
   #PHI <- matrix(0,ncol=ncol(phi),nrow=nrow(phi))
   DATA_INDIV_MISS <- DATA_HOUSE_MISS <- NULL
+  
+  n_batch_imp_init <- rep(10,n_miss) #sample imputations in batches before checking constraints
+  n_0_reject <- rep(0,n_miss)
   
   ###### 5: Run MCMC
   for(mc in 1:n_iter){
@@ -129,19 +134,17 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
     M = rowSums(Ran_unif_M>cumul_M) + 1L
     
     #sample phi
-    d_k_gm = 1+cumsum(c(0,d_k_indiv[,-p]))
     for(gg in 1:SS){
       for(ggg in 1:p){
-        phi[d_k_gm[ggg]:cumsum(d_k_indiv)[ggg],(c(1:FF)+((gg-1)*FF))] = 
+        phi[d_k_indiv_cum[ggg]:cumsum(d_k_indiv)[ggg],(c(1:FF)+((gg-1)*FF))] = 
           t(rdirichlet(FF,matrix(a_kdk + table(factor(rep_G[which(M==gg)],levels=c(1:FF)),
                                                Data_indiv[which(M==gg),ggg]),nrow=FF)))
       }
     }
     
     #sample lambda
-    d_k = 1+cumsum(c(0,d_k_house[,-q]))
     for(kk in 1:q){
-      lambda[d_k[kk]:cumsum(d_k_house)[kk],] = 
+      lambda[d_k_house_cum[kk]:cumsum(d_k_house)[kk],] = 
         t(rdirichlet(FF,matrix(a_kdk + table(factor(G,levels=c(1:FF)),Data_house[,kk]),nrow=FF)))
     }
     
@@ -191,7 +194,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
         for(kkk in 2:q){
           if(length(which(is.na(NA_house[,kkk])==TRUE))>0){
             pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),
-                                    d_k[kkk]:cumsum(d_k_house)[kkk]]
+                                    d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
             Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
             cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
             level_house_q <- level_house[[kkk]]
@@ -203,17 +206,23 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
       #Now individuals
       if(sum(is.na(NA_indiv)) > 0){
         for(sss in 1:n_miss){
+          n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*1.2) #no. of batches of imputations to sample
+          n_0_reject[sss] <- 0
           another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
           n_another_index <- length(another_index) + 1
           NA_indiv_prop <- NA_indiv[another_index,]
-          phi_m_g <- t(phi[,(rep_G[another_index]+((M[another_index]-1)*FF))])
+          NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
+          NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp),byrow=TRUE,ncol=p)
+          rep_G_prop <- rep(rep_G[another_index],n_batch_imp)
+          rep_M_prop <- rep(M[another_index],n_batch_imp)
+          phi_m_g <- t(phi[,(rep_G_prop+((rep_M_prop-1)*FF))])
           check_counter_sss <- 0;
           while(check_counter_sss < 1){
             Data_indiv_prop <- NA_indiv_prop
             for(kkkk in 1:p){
               if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
                 pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),
-                                                d_k_gm[kkkk]:cumsum(d_k_indiv)[kkkk]]),
+                                                d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),
                                       nrow=length(which(is.na(NA_indiv_prop[,kkkk])==TRUE)),byrow=T)
                 Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
                 cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
@@ -223,14 +232,20 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
               }
             }
             #Check edit rules
-            comb_to_check <- matrix(as.numeric(as.character(t(Data_indiv_prop))),nrow=1)
-            comb_to_check <- 
-              cbind(matrix(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),nrow=1),
-                    comb_to_check)
+            comb_to_check <- matrix(t(Data_indiv_prop),nrow=n_batch_imp,byrow=TRUE)
+            comb_to_check_HH <-matrix(rep(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),
+                                          n_batch_imp),nrow=n_batch_imp,byrow = T)
+            comb_to_check <- cbind(comb_to_check_HH,comb_to_check)
             check_counter <- checkSZ(comb_to_check,n_another_index)
-            check_counter_sss <- check_counter_sss + check_counter
+            check_counter_sss <- check_counter_sss + sum(check_counter)
+            if(length(which(check_counter==1))>0){
+              n_0_reject[sss] <- n_0_reject[sss] + length(which(check_counter[1:which(check_counter==1)[1]]==0))
+            } else{
+              n_0_reject[sss] <- n_0_reject[sss] + n_batch_imp
+            }
           }
-          Data_indiv[another_index,] <- Data_indiv_prop
+          Data_indiv[another_index,] <-
+            matrix(comb_to_check[which(check_counter==1)[1],-c(1:p)],byrow=TRUE,ncol=p) #remove household head
         }
       }
     } else{
@@ -240,7 +255,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
         for(kkk in 2:q){
           if(length(which(is.na(NA_house[,kkk])==TRUE))>0){
             pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),
-                                    d_k[kkk]:cumsum(d_k_house)[kkk]]
+                                    d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
             Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
             cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
             level_house_q <- level_house[[kkk]]
@@ -257,7 +272,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
         }
         for(kkkk in 1:p){
           if(length(which(is.na(NA_indiv[,kkkk])==TRUE))>0){
-            pr_X_miss_p <- phi_m_g[which(is.na(NA_indiv[,kkkk])==TRUE),d_k_gm[kkkk]:cumsum(d_k_indiv)[kkkk]]
+            pr_X_miss_p <- phi_m_g[which(is.na(NA_indiv[,kkkk])==TRUE),d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]
             Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
             cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
             level_indiv_p <- level_indiv[[kkkk]]
@@ -293,8 +308,9 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,struc_zero)
     cat("Iter No. =", mc,"\t"," ",
         "F =",formatC(length(unique(G)), width=2, flag=" "),"\t",
         "S =",formatC(max(S.occup), width=2, flag=" "),"\t",
-        "alpha =",round(alpha,2),"\t",
-        "beta =",round(beta,2),"\t",
+        #"alpha =",round(alpha,2),"\t",
+        #"beta =",round(beta,2),"\t",
+        "Eff. n0=",formatC(round(sum(n_0_reject),2),width=1,flag=""),"\t",
         "time= ",formatC(round(elapsed_time,2),width=1,flag=""),"\n", sep = " ")
   }
 
