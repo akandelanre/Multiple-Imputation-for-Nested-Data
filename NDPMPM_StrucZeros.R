@@ -191,8 +191,6 @@ Data_house_cc <- Data_house[-Indiv_miss_index_HH,]
 
 
 ###### 4b: Load the posterior draws for individuals with the missing entries/data
-#data_house_post <- read.table("Initial/DATA_HOUSE_MISS.txt",header=TRUE)
-#data_indiv_post <- read.table("Initial/DATA_INDIV_MISS.txt",header=TRUE)
 dp_imput_indiv_nz <- read.table("Initial/dp_imput_indiv.txt",header=TRUE)
 dp_imput_house_nz <- read.table("Initial/dp_imput_house.txt",header=TRUE)
 

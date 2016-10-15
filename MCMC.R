@@ -102,13 +102,8 @@ for(mc in 1:n_iter){
   lambda_index <- data.matrix(Data_house)+FFF_house #has to be within loop  for MI
   
   
-  #Change index for missing values
-  phi_index[is.na(phi_index)] <- nrow(phi) + 1
-  lambda_index[is.na(lambda_index)] <- nrow(lambda) + 1
-  
-  
   #sample G::: set the probability of NA to be one to make coding easy. Shouldnt affect anything in the multiplications
-  pr_G_post <- prGpost(phi_index,lambda_index,rbind(phi,1),rbind(lambda,1),omega,c(pii),FF,SS,n_i)
+  pr_G_post <- prGpost(phi_index,lambda_index,phi,lambda,omega,c(pii),FF,SS,n_i)
   Ran_unif_G <- runif(nrow(pr_G_post))
   cumul_G <- pr_G_post%*%upper.tri(diag(ncol(pr_G_post)),diag=TRUE)
   G <- rowSums(Ran_unif_G>cumul_G) + 1L
@@ -117,7 +112,7 @@ for(mc in 1:n_iter){
   
   #sample M::: set the probability of NA to be one to make coding easy. Shouldnt affect anything in the multiplications
   rep_G <- rep(G,n_i)
-  pr_M_post <- prMpost(phi_index,rbind(phi,1),omega,rep_G,FF,SS)
+  pr_M_post <- prMpost(phi_index,phi,omega,rep_G,FF,SS)
   Ran_unif_M <- runif(nrow(pr_M_post))
   cumul_M <- pr_M_post%*%upper.tri(diag(ncol(pr_M_post)),diag=TRUE)
   M <- rowSums(Ran_unif_M>cumul_M) + 1L
