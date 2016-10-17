@@ -3,8 +3,7 @@
 
 ###########################################################################
 ###########################################################################
-############### MI using NDPMPM: Integrate missing data out ###############
-############### Use rejection sampler to sample missing data ##############
+####### MI using NDPMPM: Use rejection sampler to sample missing data #####
 ####### Also make household head into a household level variable ##########
 ###########################################################################
 ###########################################################################
@@ -123,6 +122,7 @@ Rcpp::sourceCpp('CppFunctions/prGpost.cpp')
 Rcpp::sourceCpp('CppFunctions/prMpost.cpp')
 Rcpp::sourceCpp('CppFunctions/checkSZ.cpp')
 source("OtherFunctions/OtherFunctions.R")
+source("OtherFunctions/NDPMPM_No_StrucZeros.R")
 X_house = read.table("Data/X_house.txt",header=TRUE)
 X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
 level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:100),c(2:12))
@@ -154,27 +154,27 @@ n_i_index <- rep(n_i,n_i)
 ### 40% have only relate missing, 40% have only age missing and 20% have both missing.
 ### The other individual level variables are missing with 40% probability
 set.seed(419)
-n_miss <- 0.3*n
+n_miss <- 0.35*n
 House_miss_index <- NULL
 Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
 for(i in 1:n_miss){
   another_index <- which(is.element(house_index,Indiv_miss_index_HH[i])==TRUE)
   sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
-  if(i <= (0.25*n_miss)){
+  if(i <= (0.35*n_miss)){
     Data_indiv[sub_sample,"Age"] <- NA
   }
-  if(i > (0.25*n_miss) & i <= (0.5*n_miss)){
+  if(i > (0.35*n_miss) & i <= (0.7*n_miss)){
     Data_indiv[sub_sample,"Relate"] <- NA
   }
-  if(i > (0.5*n_miss)){
+  if(i > (0.7*n_miss)){
     Data_indiv[sub_sample,c("Age","Relate")] <- NA
   }
 }
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(Data_indiv)
-others_names <- c("Gender","Race") #others_names <- c("Gender","Race","Hisp")
-O_indiv[Indiv_miss_index,others_names] <- rbinom((length(Indiv_miss_index)*length(others_names)),1,0.2)
+others_names <- c("Gender","Race")
+O_indiv[Indiv_miss_index,others_names] <- rbinom((length(Indiv_miss_index)*length(others_names)),1,0.5)
 Data_indiv[O_indiv==0] <- NA
 NA_indiv <- Data_indiv; NA_house <- Data_house;
 Indiv_miss_index_HH <- sort(Indiv_miss_index_HH)
@@ -182,7 +182,20 @@ Data_indiv_cc <- Data_indiv[-Indiv_miss_index,]
 Data_house_cc <- Data_house[-Indiv_miss_index_HH,]
 
 
-###### 4: Calculate observed proportions and number of categories for each variable
+###### 4a: Run NDPMPM without structural zeros for comparison
+#n_proposed <- 10;
+#NDPMPM_results <- fit_NDPMPM(Data_house,Data_indiv,FF=20,SS=15,n_iter=10000,burn_in=8000,MM=n_proposed,struc_zero=TRUE)
+#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+#  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
+#writeFun(NDPMPM_results)
+
+
+###### 4b: Load the posterior draws for individuals with the missing entries/data
+#dp_imput_indiv_nz <- read.table("Initial/dp_imput_indiv.txt",header=TRUE)
+#dp_imput_house_nz <- read.table("Initial/dp_imput_house.txt",header=TRUE)
+
+
+###### 5: Calculate observed proportions and number of categories for each variable
 d_k_house <- d_k_indiv <- ini_marg_house <- ini_marg_indiv <- NULL
 for(k in 1:q){
   d_k_house <- cbind(d_k_house,nlevels(Data_house[,k]))
@@ -196,11 +209,15 @@ for(k in 1:p){
   ini_marg_indiv <- rbind(ini_marg_indiv,ini_marg_k)  }
 
 
-###### 5: Set parameters for structural zeros
-n_batch <- 10000 #sample impossibles in batches before checking constraints
+###### 6: Set parameters for structural zeros
+n_batch_init <- rep(100,length(level_house[[1]])) #sample impossibles in batches before checking constraints
+n_0 <- rep(0,length(level_house[[1]]))
+n_batch_imp_init <- rep(10,n_miss) #sample imputations in batches before checking constraints
+n_0_reject <- rep(0,n_miss)
+prop_batch <- 1.2
 
 
-###### 6: Initialize chain
+###### 7: Initialize chain
 FF <- 20
 SS <- 15
 alpha <- beta <- 1
@@ -231,14 +248,14 @@ FFF_indiv <- matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
 FFF_house <- matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
 
 
-###### 7: Create empty matrices to save results
+###### 8: Create empty matrices to save results
 dp_imput_house <- dp_imput_indiv <- NULL
 ALPHA <- BETA <- PII <- G_CLUST <- M_CLUST <- N_ZERO <- NULL
 #LAMBDA <- matrix(0,ncol=(ncol(lambda)*nrow(lambda)),nrow=(n_iter-burn_in))
 #OMEGA <- matrix(0,ncol=(ncol(omega)*nrow(omega)),nrow=(n_iter-burn_in))
 
 
-###### 8: Run MCMC
+###### 9: Run MCMC
 source("MCMC.R")
 MCMC_Results <- list(Data_house_truth=Data_house_truth,Data_indiv_truth=Data_indiv_truth,
                      Data_house_cc=Data_house_cc,Data_indiv_cc=Data_indiv_cc,
@@ -260,6 +277,7 @@ writeFun(MCMC_Results)
 
 
 ########################## Step 3: Model Assessment ##########################
+rm(list = ls())
 ###### 1: Define parameters and load saved results
 mm <- 10;
 Data_house_truth <- read.table("Results/Data_house_truth.txt",header=TRUE)
