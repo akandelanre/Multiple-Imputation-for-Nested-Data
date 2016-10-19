@@ -107,6 +107,7 @@ for(mc in 1:n_iter){
   Ran_unif_G <- runif(nrow(pr_G_post))
   cumul_G <- pr_G_post%*%upper.tri(diag(ncol(pr_G_post)),diag=TRUE)
   G <- rowSums(Ran_unif_G>cumul_G) + 1L
+  #G <- c(as.matrix(G_true))
   remove(pr_G_post); remove(Ran_unif_G); remove(cumul_G); remove(lambda_index)
   
   
@@ -116,6 +117,7 @@ for(mc in 1:n_iter){
   Ran_unif_M <- runif(nrow(pr_M_post))
   cumul_M <- pr_M_post%*%upper.tri(diag(ncol(pr_M_post)),diag=TRUE)
   M <- rowSums(Ran_unif_M>cumul_M) + 1L
+  #M <- c(as.matrix(M_true))
   remove(pr_M_post); remove(Ran_unif_M); remove(cumul_M); remove(phi_index)
   
   
@@ -130,6 +132,7 @@ for(mc in 1:n_iter){
                                              Data_indiv_all[which(M_all==gg),ggg]),nrow=FF)))
     }
   }
+  #phi <- as.matrix(phi_true)
   remove(Data_indiv_all)
   
   
@@ -140,6 +143,7 @@ for(mc in 1:n_iter){
     lambda[d_k_house_cum[kk]:cumsum(d_k_house)[kk],] <- 
       t(rdirichlet(FF,matrix(a_kdk + table(factor(G_all,levels=c(1:FF)),Data_house_all[,kk]),nrow=FF)))
   }
+  #lambda <- as.matrix(lambda_true)
   remove(Data_house_all)
   
   

@@ -94,12 +94,23 @@ for(str_ch in 1:n){
 ###### 4b: Select only possible households in final data
 X_indiv = X_indiv[X_indiv_check_counter,]
 X_house = X_house[X_house_check_counter,]
-#G = G[X_house_check_counter]
-#M = M[X_indiv_check_counter]
+G = G[X_house_check_counter]
+M = M[X_indiv_check_counter]
+
+
+###### 4c: Reshape phi to  matrix
+phi_true_mat <- matrix(0,nrow=dim(phi_true)[1],ncol=F_true*S_true) #make phi matrix and not array for c++
+for(i in 1:dim(phi_true)[1]){
+  phi_true_mat[i,] <- c(t( phi_true[i,,]))  }
+
 
 ###### 4c: Save!!!
 write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
 write.table(X_indiv, file = "Data/X_indiv.txt",row.names = FALSE)
+write.table(phi_true_mat, file = "Data/phi_true.txt",row.names = FALSE)
+write.table(lambda_true, file = "Data/lambda_true.txt",row.names = FALSE)
+write.table(G, file = "Data/G_true.txt",row.names = FALSE)
+write.table(M, file = "Data/M_true.txt",row.names = FALSE)
 ########################## End of Step 1 ########################## 
 
 
@@ -122,6 +133,10 @@ Rcpp::sourceCpp('CppFunctions/prMpost.cpp')
 source("OtherFunctions/OtherFunctions.R")
 X_house <- read.table("Data/X_house.txt",header=TRUE)
 X_indiv <- read.table("Data/X_indiv.txt",header=TRUE)
+phi_true <- read.table("Data/phi_true.txt",header=TRUE)
+lambda_true <- read.table("Data/lambda_true.txt",header=TRUE)
+G_true <- read.table("Data/G_true.txt",header=TRUE)
+M_true <- read.table("Data/M_true.txt",header=TRUE)
 level_house <- list(c(1:2),c(1:2))
 level_indiv <- list(c(1:2),c(1:2),c(1:2))
 Data_house <- data.frame(X_house)
@@ -197,8 +212,8 @@ n_batch <- 10000 #sample impossibles in batches before checking constraints
 
 
 ###### 6: Initialize chain
-FF <- 15
-SS <- 5
+FF <- 5
+SS <- 3
 alpha <- beta <- 1
 a_kdk <- 1
 a_alpha <- b_alpha <- a_beta <- b_beta <- 0.25
@@ -226,6 +241,8 @@ d_k_house_cum <- 1+cumsum(c(0,d_k_house[,-q]))
 FFF_indiv <- matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
 FFF_house <- matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
 
+
+phi <- as.matrix(phi_true)
 
 ###### 7: Create empty matrices to save results
 dp_imput_house <- dp_imput_indiv <- NULL
