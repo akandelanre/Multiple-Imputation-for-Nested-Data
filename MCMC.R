@@ -12,7 +12,8 @@ for(mc in 1:n_iter){
     n_batch <- n_batch_init[ss] + ceiling(n_0[ss]*prop_batch) #no. of batches of imputations to sample
     n_0[ss] <- 0
     t_0 <- 0; t_1 <- 0
-    while(t_1 < length(which(n_i == hh_size))){
+    n_impossibles <- ceiling(length(which(n_i == hh_size))*struc_weight[as.character(hh_size),])
+    while(t_1 < n_impossibles){
       pr_G_t <- lambda[which(level_house[[1]]==hh_size),]*pii #1 is the location of HHsize in level_house
       G_t <- sample(FF,n_batch,prob=pr_G_t,replace=T)
       rep_G_t <- rep(G_t,each=hh_size)
@@ -47,7 +48,7 @@ for(mc in 1:n_iter){
       Data_indiv_t <- matrix(t(comb_to_check[,-c(1:p)]),byrow=T,ncol=p)
       
       t_1 <- t_1 + sum(check_counter);
-      if(t_1 <= length(which(n_i == hh_size))){
+      if(t_1 <= n_impossibles){
         t_0 <- t_0 + (n_batch - sum(check_counter))
         Data_indiv_struc <- rbind(Data_indiv_struc,Data_indiv_t[which(rep(check_counter,each=hh_size)==0),])
         Data_house_struc <- rbind(Data_house_struc,Data_house_t[which(check_counter==0),])
@@ -56,7 +57,7 @@ for(mc in 1:n_iter){
         M_0 <- c(M_0,M_t[which(rep(check_counter,each=hh_size)==0)])
         G_0 <- c(G_0,G_t[which(check_counter==0)])
       } else {
-        t_needed <- sum(check_counter) - (t_1 - length(which(n_i == hh_size)))
+        t_needed <- sum(check_counter) - (t_1 - n_impossibles)
         index_needed <- which(cumsum(check_counter)==t_needed)[1]
         check_counter_needed <- check_counter[1:index_needed]
         t_0 <- t_0 + (length(check_counter_needed) - sum(check_counter_needed))
@@ -88,6 +89,9 @@ for(mc in 1:n_iter){
   colnames(Data_indiv_struc) <- colnames(Data_indiv)
   colnames(Data_house_valid) <- colnames(Data_house)
   colnames(Data_indiv_valid) <- colnames(Data_indiv)
+  n_i_0 <- as.numeric(as.character(Data_house_struc[,1]))
+  house_index_0 <- rep(c(1:sum(n_0)),n_i_0)
+  n_i_index_0 <- rep(n_i_0,n_i_0)
   
   
   #Free up some memory
@@ -122,29 +126,53 @@ for(mc in 1:n_iter){
   #sample phi
   rep_G_all <- c(rep_G,rep_G_0)
   M_all <- c(M,M_0)
-  Data_indiv_all <- rbind(Data_indiv,Data_indiv_struc)
+  #Data_indiv_all <- rbind(Data_indiv,Data_indiv_struc)
   for(gg in 1:SS){
     for(ggg in 1:p){
+      phi_count_table <- table(factor(rep_G[which(M==gg)],levels=c(1:FF)),Data_indiv[which(M==gg),ggg])
+      for(w_i in 1:length(struc_weight)){
+        hh_size <- as.numeric(rownames(struc_weight)[w_i])
+        w_i_index <- n_i_index_0==hh_size
+        rep_G_0_w_i <- rep_G_0[w_i_index]
+        M_0_w_i <- M_0[w_i_index]
+        Data_indiv_struc_w_i <- Data_indiv_struc[w_i_index,]
+        phi_count_table <- phi_count_table + 
+          (table(factor(rep_G_0_w_i[which(M_0_w_i==gg)],levels=c(1:FF)),
+                 Data_indiv_struc_w_i[which(M_0_w_i==gg),ggg])/struc_weight[w_i])
+      }
       phi[d_k_indiv_cum[ggg]:cumsum(d_k_indiv)[ggg],(c(1:FF)+((gg-1)*FF))] <- 
-        t(rdirichlet(FF,matrix(a_kdk + table(factor(rep_G_all[which(M_all==gg)],levels=c(1:FF)),
-                                             Data_indiv_all[which(M_all==gg),ggg]),nrow=FF)))
+        t(rdirichlet(FF,matrix(a_kdk + phi_count_table,nrow=FF)))
     }
   }
-  remove(Data_indiv_all)
+  #remove(Data_indiv_all)
   
   
   #sample lambda
   G_all <- c(G,G_0)
-  Data_house_all <- rbind(Data_house,Data_house_struc)
+  #Data_house_all <- rbind(Data_house,Data_house_struc)
   for(kk in 1:q){
-    lambda[d_k_house_cum[kk]:cumsum(d_k_house)[kk],] <- 
-      t(rdirichlet(FF,matrix(a_kdk + table(factor(G_all,levels=c(1:FF)),Data_house_all[,kk]),nrow=FF)))
+    lambda_count_table <- table(factor(G,levels=c(1:FF)),Data_house[,kk])
+    for(w_i in 1:length(struc_weight)){
+      hh_size <- as.numeric(rownames(struc_weight)[w_i])
+      w_i_index <- n_i_0==hh_size
+      G_0_w_i <- G_0[w_i_index]
+      Data_house_struc_w_i <- Data_house_struc[w_i_index,]
+      lambda_count_table <- 
+        lambda_count_table + (table(factor(G_0_w_i,levels=c(1:FF)),Data_house_struc_w_i[,kk])/struc_weight[w_i])
+    }
+    lambda[d_k_house_cum[kk]:cumsum(d_k_house)[kk],] <- t(rdirichlet(FF,matrix(a_kdk + lambda_count_table,nrow=FF)))
   }
-  remove(Data_house_all)
+  #remove(Data_house_all)
   
   
   #sample U and pii
-  n_f <- matrix(summary(factor(G_all,levels=c(1:FF))),ncol=1)
+  n_f <- matrix(summary(factor(G,levels=c(1:FF))),ncol=1)
+  for(w_i in 1:length(struc_weight)){
+    hh_size <- as.numeric(rownames(struc_weight)[w_i])
+    w_i_index <- n_i_0==hh_size
+    G_0_w_i <- G_0[w_i_index]
+    n_f <- n_f + (matrix(summary(factor(G_0_w_i,levels=c(1:FF))),ncol=1)/struc_weight[w_i])
+  }
   U[FF]<-1
   U[1:(FF-1),1] <- rbeta((FF-1),(1L+n_f[1:(FF-1)]),(alpha+(sum(n_f)-cumsum(n_f[-FF]))))
   if(length(which(U[-FF]==1))>0){
@@ -153,11 +181,18 @@ for(mc in 1:n_iter){
   one_min_U <- 1L-U
   one_min_U_prod <- c(1,cumprod(one_min_U[1:(FF-1)]))
   pii <- U*one_min_U_prod
-  remove(n_f); remove(G_all)
+  remove(n_f);
   
   
   #sample V and omega
-  M_G <- table(factor(rep_G_all,levels=c(1:FF)),factor(M_all,levels=c(1:SS)))
+  M_G <- table(factor(rep_G,levels=c(1:FF)),factor(M,levels=c(1:SS)))
+  for(w_i in 1:length(struc_weight)){
+    hh_size <- as.numeric(rownames(struc_weight)[w_i])
+    w_i_index <- n_i_index_0==hh_size
+    rep_G_0_w_i <- rep_G_0[w_i_index]
+    M_0_w_i <- M_0[w_i_index]
+    M_G <- M_G + (table(factor(rep_G_0_w_i,levels=c(1:FF)),factor(M_0_w_i,levels=c(1:SS)))/struc_weight[w_i])
+  }
   n_gm <- as.data.frame(M_G)$Freq
   V[,SS]<-1
   no_V_to_sim <- (FF*(SS-1))
@@ -170,8 +205,7 @@ for(mc in 1:n_iter){
   one_min_V <- 1L-V
   one_min_V_prod <- cbind(1,t(apply(one_min_V[,-SS],1,cumprod)))
   omega <- V*one_min_V_prod
-  remove(M_G); remove(rep_G_all); remove(M_all); remove(n_gm)
-  
+  remove(M_G); remove(n_gm)
   
   #sample alpha
   alpha <- rgamma(1,shape=(a_alpha+FF-1),rate=(b_alpha-log(pii[FF])))
@@ -183,10 +217,10 @@ for(mc in 1:n_iter){
   
   #check number of occupied clusters
   S.occup <- NULL
-  for(occ in sort(unique(G))){
-    S.occup <- rbind(S.occup,dim(table(rep_G[which(rep_G==occ)],M[which(rep_G==occ)]))[2])
+  for(occ in sort(unique(G_all))){
+    S.occup <- rbind(S.occup,dim(table(rep_G_all[which(rep_G_all==occ)],M_all[which(rep_G_all==occ)]))[2])
   }
-  
+  remove(rep_G_all); remove(M_all); remove(G_all)
   
   #sample missing X's
   #First household
@@ -270,15 +304,14 @@ for(mc in 1:n_iter){
   
   #print
   elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
-  cat("Iter=", formatC(mc, width=2, flag=" "),"\t"," ",
-      "F=",formatC(length(unique(G)), width=2, flag=" "),"\t",
-      "S=",formatC(max(S.occup), width=2, flag=" "),"\t",
-      #"alp=",formatC(round(alpha,2), width=1, flag=" "),"\t",
-      #"bet=",formatC(round(beta,2), width=1, flag=" "),"\t",
-      "n0=",formatC(round(sum(n_0),2),width=1,flag=""),"\t",
-      "Eff. n0=",formatC(round((sum(n_0_reject)+sum(n_0)),2),width=1,flag=""),"\t",
-      "time= ",formatC(round(elapsed_time,2),width=1,flag=""),"\n", sep = " ")
-  
-  
+  cat("Iter:", formatC(mc, width=2, flag=" "),"\t"," ",
+      "F:",formatC(length(unique(G)), width=2, flag=" "),"\t",
+      "S:",formatC(max(S.occup), width=2, flag=" "),"\t",
+      #"alp:",formatC(round(alpha,2), width=2, flag=" "),"\t",
+      #"bet:",formatC(round(beta,2), width=2, flag=" "),"\t",
+      "n0:",formatC(round(sum(n_0),2),width=2,flag=""),"\t",
+      "Eff n0:",formatC(round((sum(n_0_reject)+sum(n_0)),2),width=2,flag=""),"\t",
+      "True n0:",formatC(round((sum(n_0_reject)+sum(n_0/struc_weight)),2),width=2,flag=""),"\t",
+      "T= ",formatC(round(elapsed_time,2),width=2,flag=""),"\n", sep = " ")
 }
 

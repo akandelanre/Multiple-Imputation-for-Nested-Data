@@ -233,8 +233,18 @@ n_batch_imp_init <- rep(10,n_miss) #sample imputations in batches before checkin
 n_0_reject <- rep(0,n_miss)
 prop_batch <- 1.2
 
+###### 7: Weighting
+weight_option <- TRUE #set to true for weighting/capping option
+if(weight_option){
+  struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
+} else {
+  struc_weight <- rep(1,length(level_house[[1]])) #set weights: must be ordered & no household size must be excluded
+}
+struc_weight <- as.matrix(struc_weight)
+rownames(struc_weight) <- as.character(unique(sort(n_i)))
 
-###### 7: Initialize chain
+
+###### 8: Initialize chain
 FF <- 20
 SS <- 15
 alpha <- beta <- 1
@@ -265,14 +275,14 @@ FFF_indiv <- matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
 FFF_house <- matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
 
 
-###### 8: Create empty matrices to save results
+###### 9: Create empty matrices to save results
 dp_imput_house <- dp_imput_indiv <- NULL
 ALPHA <- BETA <- PII <- G_CLUST <- M_CLUST <- N_ZERO <- NULL
 #LAMBDA <- matrix(0,ncol=(ncol(lambda)*nrow(lambda)),nrow=(n_iter-burn_in))
 #OMEGA <- matrix(0,ncol=(ncol(omega)*nrow(omega)),nrow=(n_iter-burn_in))
 
 
-###### 9: Run MCMC
+###### 10: Run MCMC
 source("MCMC.R")
 MCMC_Results <- list(Data_house_truth=Data_house_truth,Data_indiv_truth=Data_indiv_truth,
                      Data_house_cc=Data_house_cc,Data_indiv_cc=Data_indiv_cc,
@@ -730,11 +740,13 @@ CInt_syn_nz <- cbind(CIntLower_dp_nz,CIntUpper_dp_nz)
 ###### 6: Combine and save!!!
 CompareProbs <- cbind(Probs,Probs_cc,dp_qbar,dp_qbar_nz,CInt,CInt_cc,CInt_syn,CInt_syn_nz)
 #CompareProbs <- CompareProbs[-3,] #Remove households of size 4 for now
-colnames(CompareProbs) = c("Orig-Data Q","CC-Data Q","Model Q","No Struc. Q","Orig-Data L","Orig-Data U",
+colnames(CompareProbs) <- c("Orig-Data Q","CC-Data Q","Model Q","No Struc. Q","Orig-Data L","Orig-Data U",
                            "CC-Data L","CC-Data U","Model L","Model U","No Struc. L","No Struc. U")
-write.table(CompareProbs,"Results/CompareProbs.txt",row.names = FALSE)
+write.table(CompareProbs,"Results/CompareProbsWithWeight.txt",row.names = FALSE)
 CompareProbs <- read.table("Results/CompareProbs.txt",header=TRUE)
+CompareProbsWithWeight <- read.table("Results/CompareProbsWithWeight.txt",header=TRUE)
 round(CompareProbs,3)
+round(CompareProbsWithWeight,3)
 #round(CompareProbs[,-c(2,6,7)],3)
 #library(xtable)
 #xtable(round(CompareProbs[,c(3,8,9)],3),digits = 3)
