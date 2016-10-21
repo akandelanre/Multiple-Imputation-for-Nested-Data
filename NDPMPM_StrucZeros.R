@@ -4,6 +4,8 @@
 ###########################################################################
 ###########################################################################
 ####### MI using NDPMPM: Use rejection sampler to sample missing data #####
+####### Add weighting option for sampling impossibles #####################
+####### Add the Rejection sampler/sampling proposals hybrid option ########
 ####### Also make household head into a household level variable ##########
 ###########################################################################
 ###########################################################################
@@ -121,6 +123,7 @@ library(coda)
 Rcpp::sourceCpp('CppFunctions/prGpost.cpp')
 Rcpp::sourceCpp('CppFunctions/prMpost.cpp')
 Rcpp::sourceCpp('CppFunctions/checkSZ.cpp')
+Rcpp::sourceCpp('CppFunctions/prHH.cpp')
 source("OtherFunctions/OtherFunctions.R")
 source("OtherFunctions/NDPMPM_No_StrucZeros.R")
 X_house = read.table("Data/X_house.txt",header=TRUE)
@@ -183,36 +186,58 @@ Data_house_cc <- Data_house[-Indiv_miss_index_HH,]
 
 
 ###### 4a: Run NDPMPM without structural zeros for comparison
-#n_proposed <- 10;
-#NDPMPM_results <- fit_NDPMPM(Data_house,Data_indiv,FF=20,SS=15,n_iter=10000,burn_in=8000,MM=n_proposed,struc_zero=TRUE)
+n_prop <- 30; MM <- 10
+#NDPMPM_fit <-
+#  fit_NDPMPM(Data_house,Data_indiv,FF=20,SS=15,n_iter=10000,burn_in=8000,MM=MM,n_prop=n_prop,struc_zero=F,valid_prop=T)
 #writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
 #  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
-#writeFun(NDPMPM_results)
+#writeFun(NDPMPM_fit)
+#remove(NDPMPM_fit)
 
 
 ###### 4b: Load the posterior draws for individuals with the missing entries/data
 dp_imput_indiv_nz <- read.table("Initial/dp_imput_indiv.txt",header=TRUE)
 dp_imput_house_nz <- read.table("Initial/dp_imput_house.txt",header=TRUE)
+data_house_post <- read.table("Initial/DATA_HOUSE_MISS.txt",header=TRUE)
+data_indiv_post <- read.table("Initial/DATA_INDIV_MISS.txt",header=TRUE)
 
 
-###### 4: Fill missing values with starting values
-if(sum(is.na(NA_indiv)) > 0){
-  for (ii in 1:ncol(Data_indiv)){
-    Data_indiv[is.na(Data_indiv[,ii]),ii] <- 
-      sample(level_indiv[[ii]],length(Data_indiv[is.na(Data_indiv[,ii]),ii]),replace=T,
-             prob=summary(na.omit(Data_indiv[,ii])))
+###### 4c: Make the proposals into a list
+###### Also, fill missing values with the proposal as a starting value
+###### Lastly, combine the proposals to make M multiple datasets stacked by rows for imputation 
+Post_prop_indiv <- vector("list",n_miss)
+Post_prop_house_index <- rep(1:n_miss,n_i[Indiv_miss_index_HH])
+for(jj in 1:n_miss){
+  another_index <- which(Post_prop_house_index == jj)
+  for(kk in 1:n_prop){
+    Post_prop_indiv[[jj]] <- 
+      rbind(Post_prop_indiv[[jj]],data_indiv_post[(another_index + (kk-1)*length(Indiv_miss_index)),])
+    if(kk == 1){
+      Data_indiv[which(is.element(house_index,Indiv_miss_index_HH[jj])==TRUE),] <- 
+        data_indiv_post[(another_index + (kk-1)*length(Indiv_miss_index)),]
+    }
   }
 }
-if(sum(is.na(NA_house)) > 0){
-  for (jj in 2:ncol(Data_house)){
-    Data_house[is.na(Data_house[,jj]),jj] <- 
-      sample(level_house[[jj]],length(Data_house[is.na(Data_house[,jj]),jj]),replace=T,
-             prob=summary(na.omit(Data_house[,jj])))
-  }
-}
 
 
-###### 5: Calculate observed proportions and number of categories for each variable
+###### 5: Fill missing values with starting values
+#if(sum(is.na(NA_indiv)) > 0){
+#  for (ii in 1:ncol(Data_indiv)){
+#    Data_indiv[is.na(Data_indiv[,ii]),ii] <- 
+#      sample(level_indiv[[ii]],length(Data_indiv[is.na(Data_indiv[,ii]),ii]),replace=T,
+#             prob=summary(na.omit(Data_indiv[,ii])))
+#  }
+#}
+#if(sum(is.na(NA_house)) > 0){
+#  for (jj in 2:ncol(Data_house)){
+#    Data_house[is.na(Data_house[,jj]),jj] <- 
+#      sample(level_house[[jj]],length(Data_house[is.na(Data_house[,jj]),jj]),replace=T,
+#             prob=summary(na.omit(Data_house[,jj])))
+#  }
+#}
+
+
+###### 6: Calculate observed proportions and number of categories for each variable
 d_k_house <- d_k_indiv <- ini_marg_house <- ini_marg_indiv <- NULL
 for(k in 1:q){
   d_k_house <- cbind(d_k_house,nlevels(Data_house[,k]))
@@ -226,17 +251,17 @@ for(k in 1:p){
   ini_marg_indiv <- rbind(ini_marg_indiv,ini_marg_k)  }
 
 
-###### 6: Set parameters for structural zeros
+###### 7: Set parameters for structural zeros
 n_batch_init <- rep(100,length(level_house[[1]])) #sample impossibles in batches before checking constraints
 n_0 <- rep(0,length(level_house[[1]]))
 n_batch_imp_init <- rep(10,n_miss) #sample imputations in batches before checking constraints
 n_0_reject <- rep(0,n_miss)
 prop_batch <- 1.2
 
-###### 7: Weighting
+###### 8: Weighting
 weight_option <- TRUE #set to true for weighting/capping option
 if(weight_option){
-  struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
+  struc_weight <- c(1,1,1) #set weights: must be ordered & no household size must be excluded
 } else {
   struc_weight <- rep(1,length(level_house[[1]])) #set weights: must be ordered & no household size must be excluded
 }
@@ -244,7 +269,7 @@ struc_weight <- as.matrix(struc_weight)
 rownames(struc_weight) <- as.character(unique(sort(n_i)))
 
 
-###### 8: Initialize chain
+###### 9: Initialize chain
 FF <- 20
 SS <- 15
 alpha <- beta <- 1
@@ -267,7 +292,7 @@ omega <- V*one_min_V
 n_iter <- 10000
 burn_in <- 0.9*n_iter
 MM <- 10
-M_to_use <- seq((burn_in+1), n_iter, (length(c((burn_in+1):n_iter))/(5*MM)))
+M_to_use <- round(seq((burn_in+1), n_iter, (length(c((burn_in+1):n_iter))/(5*MM))))
 M_to_use_mc <- sample(M_to_use,MM,replace=FALSE)
 d_k_indiv_cum <- 1+cumsum(c(0,d_k_indiv[,-p]))
 d_k_house_cum <- 1+cumsum(c(0,d_k_house[,-q]))
@@ -275,14 +300,14 @@ FFF_indiv <- matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
 FFF_house <- matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
 
 
-###### 9: Create empty matrices to save results
+###### 10: Create empty matrices to save results
 dp_imput_house <- dp_imput_indiv <- NULL
 ALPHA <- BETA <- PII <- G_CLUST <- M_CLUST <- N_ZERO <- NULL
 #LAMBDA <- matrix(0,ncol=(ncol(lambda)*nrow(lambda)),nrow=(n_iter-burn_in))
 #OMEGA <- matrix(0,ncol=(ncol(omega)*nrow(omega)),nrow=(n_iter-burn_in))
 
 
-###### 10: Run MCMC
+###### 11: Run MCMC
 source("MCMC.R")
 MCMC_Results <- list(Data_house_truth=Data_house_truth,Data_indiv_truth=Data_indiv_truth,
                      Data_house_cc=Data_house_cc,Data_indiv_cc=Data_indiv_cc,
@@ -739,17 +764,26 @@ CInt_syn_nz <- cbind(CIntLower_dp_nz,CIntUpper_dp_nz)
 
 ###### 6: Combine and save!!!
 CompareProbs <- cbind(Probs,Probs_cc,dp_qbar,dp_qbar_nz,CInt,CInt_cc,CInt_syn,CInt_syn_nz)
-#CompareProbs <- CompareProbs[-3,] #Remove households of size 4 for now
 colnames(CompareProbs) <- c("Orig-Data Q","CC-Data Q","Model Q","No Struc. Q","Orig-Data L","Orig-Data U",
                            "CC-Data L","CC-Data U","Model L","Model U","No Struc. L","No Struc. U")
-write.table(CompareProbs,"Results/CompareProbsWithWeight.txt",row.names = FALSE)
-CompareProbs <- read.table("Results/CompareProbs.txt",header=TRUE)
+write.table(CompareProbs,"Results/CompareProbsWithWeightAndHybrid.txt",row.names = FALSE)
+CompareProbsWithoutWeight <- read.table("Results/CompareProbsWithoutWeight.txt",header=TRUE)
 CompareProbsWithWeight <- read.table("Results/CompareProbsWithWeight.txt",header=TRUE)
-round(CompareProbs,3)
+CompareProbsWithWeightAndHybrid <- read.table("Results/CompareProbsWithWeightAndHybrid.txt",header=TRUE)
+round(CompareProbsWithoutWeight,3)
 round(CompareProbsWithWeight,3)
-#round(CompareProbs[,-c(2,6,7)],3)
-#library(xtable)
-#xtable(round(CompareProbs[,c(3,8,9)],3),digits = 3)
+round(CompareProbsWithWeightAndHybrid,3)
+round(cbind(CompareProbsWithoutWeight$Orig.Data.Q,CompareProbsWithoutWeight$Model.Q,CompareProbsWithWeight$Model.Q,
+            0,CompareProbsWithWeightAndHybrid$Model.Q,CompareProbsWithWeight$No.Struc..Q),3)
+library(xtable)
+xtable(round(cbind(CompareProbsWithoutWeight$Orig.Data.Q,CompareProbsWithoutWeight$Model.Q,CompareProbsWithWeight$Model.Q
+                    ,0,CompareProbsWithWeightAndHybrid$Model.Q,CompareProbsWithoutWeight$No.Struc..Q),3),digits = 3)
+
+xtable(round(cbind(CompareProbsWithoutWeight$Orig.Data.L,CompareProbsWithoutWeight$Model.L,CompareProbsWithWeight$Model.L
+                   ,0,CompareProbsWithWeightAndHybrid$Model.L,CompareProbsWithoutWeight$No.Struc..L),3),digits = 3)
+
+xtable(round(cbind(CompareProbsWithoutWeight$Orig.Data.U,CompareProbsWithoutWeight$Model.U,CompareProbsWithWeight$Model.U
+                   ,0,CompareProbsWithWeightAndHybrid$Model.U,CompareProbsWithoutWeight$No.Struc..U),3),digits = 3)
 ########################## End of Step 3 ########################## 
 
 

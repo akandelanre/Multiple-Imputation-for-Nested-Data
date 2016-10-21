@@ -241,10 +241,12 @@ for(mc in 1:n_iter){
   #Now individuals
   if(sum(is.na(NA_indiv)) > 0){
     for(sss in 1:n_miss){
+      SampleNew <- sample(c("TRUE","FALSE"),1,prob=c(0.2,0.8),replace=FALSE) #proportion to sample using rejection sample
       n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*prop_batch) #no. of batches of imputations to sample
       n_0_reject[sss] <- 0
       another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
       n_another_index <- length(another_index) + 1
+      if(SampleNew){
       NA_indiv_prop <- NA_indiv[another_index,]
       NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
       NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp),byrow=TRUE,ncol=p)
@@ -281,6 +283,19 @@ for(mc in 1:n_iter){
       }
       Data_indiv[another_index,] <-
         matrix(comb_to_check[which(check_counter==1)[1],-c(1:p)],byrow=TRUE,ncol=p) #remove household head
+      } else {
+        post_prop_indiv_sss <- Post_prop_indiv[[sss]]
+        FFF_indiv_prop <- matrix(cumsum(c(0,d_k_indiv[,-p])),ncol=p,nrow=nrow(post_prop_indiv_sss),byrow=T)
+        phi_index_prop <- data.matrix(post_prop_indiv_sss) + FFF_indiv_prop
+        G_prop <- rep_G[another_index]; M_prop <- M[another_index];
+        G_prop <- rep(G_prop,n_prop); M_prop <- rep(M_prop,n_prop)
+        pi_prop <- t(as.matrix(prHH(phi_index_prop,phi,c(G_prop),c(M_prop),FF,h=(n_another_index-1))))
+        pi_prop <- pi_prop/sum(pi_prop) #renormalize
+        Ran_unif_miss_prop <- runif(nrow(pi_prop))
+        cumul_miss_prop <- pi_prop%*%upper.tri(diag(ncol(pi_prop)),diag=TRUE)
+        index_prop <- rowSums(Ran_unif_miss_prop>cumul_miss_prop) + 1L
+        Data_indiv[another_index,] <- post_prop_indiv_sss[(1:(n_another_index-1)+((n_another_index-1)*(index_prop-1))),]
+      }
     }
   }
   
