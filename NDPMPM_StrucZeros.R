@@ -26,7 +26,7 @@ House$TEN[which(House$TEN == 2)] <- 1
 House$TEN[which(House$TEN == 3)] <- 2
 
 ###### 4: Take a sample of size 2,000 Households
-set.seed(4119)
+set.seed(419)
 sample_size <- 10000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
 House <- House[samp_index,]
@@ -152,7 +152,7 @@ n_i_index <- rep(n_i,n_i)
 
 
 ###### 3a: Poke holes in Data:: Ignore missing household level data for now 
-set.seed(4119)
+set.seed(419)
 n_miss <- 0.45*n #should be 0.45
 Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
