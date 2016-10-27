@@ -131,7 +131,7 @@ inline int GetYoungestParent(NumericMatrix hh_to_check, int h) {
 
 inline bool IsValidParent(NumericMatrix hh_to_check, int parent, int head) {
   if (parent >= 0) {//get a child, check age difference
-    if (hh_to_check(parent,AGE) - hh_to_check(head,AGE) < 13) {return false;}
+    if (hh_to_check(parent,AGE) - hh_to_check(head,AGE) < 10) {return false;}
   }
   return true;
 }
