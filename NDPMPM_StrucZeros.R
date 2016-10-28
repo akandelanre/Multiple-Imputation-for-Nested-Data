@@ -200,27 +200,27 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 n_i_miss <- n_i[Indiv_miss_index_HH]
 
 ###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
-#proc_t <- proc.time()
+proc_tt <- proc.time()
 n_prop <- 50; MM <- 50
-#NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=40,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-#                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
-#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-#  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
-#writeFun(NDPMPM_proposals)
-#remove(NDPMPM_proposals)
-#(proc.time() - proc_t)[["elapsed"]]
+NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
+writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
+writeFun(NDPMPM_proposals)
+remove(NDPMPM_proposals)
+(proc.time() - proc_tt)[["elapsed"]]
 
 
 ###### 4b: Run unaugmented model with rejection sampler at every iteration and save imputation (one time only!!!)
-#proc_t <- proc.time()
-#n_prop <- 50; MM <- 50
-#NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=40,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-#                           struc_zero=T,valid_prop=T,mc_thin=50,save_imp=T,save_prop=F)
-#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-#  write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
-#writeFun(NDPMPM_imput)
-#remove(NDPMPM_imput)
-#(proc.time() - proc_t)[["elapsed"]]
+proc_tt <- proc.time()
+n_prop <- 50; MM <- 50
+NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+                           struc_zero=T,valid_prop=T,mc_thin=50,save_imp=T,save_prop=F)
+writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+  write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
+writeFun(NDPMPM_imput)
+remove(NDPMPM_imput)
+(proc.time() - proc_tt)[["elapsed"]]
 
 
 ###### 5: Hybrid rejection
@@ -299,7 +299,7 @@ rownames(struc_weight) <- as.character(unique(sort(n_i)))
 
 
 ###### 9: Initialize chain
-FF <- 40
+FF <- 30
 SS <- 15
 alpha <- beta <- 1
 a_kdk <- 1
@@ -337,9 +337,9 @@ ALPHA <- BETA <- PII <- G_CLUST <- M_CLUST <- N_ZERO <- NULL
 
 
 ###### 11: Run MCMC
-proc_t <- proc.time() 
+proc_total <- proc.time() 
 source("MCMC.R")
-total_time <- (proc.time() - proc_t)[["elapsed"]]
+total_time <- (proc.time() - proc_total)[["elapsed"]]
 if(hybrid_option){
   if(weight_option){
     MCMC_Results <- list(total_time_weighted_hybrid=total_time,
