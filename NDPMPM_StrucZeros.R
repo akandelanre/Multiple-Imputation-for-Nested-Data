@@ -26,8 +26,8 @@ House$TEN[which(House$TEN == 2)] <- 1
 House$TEN[which(House$TEN == 3)] <- 2
 
 ###### 4: Take a sample of size 2,000 Households
-set.seed(419)
-sample_size <- 10000
+set.seed(409)
+sample_size <- 5000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
 House <- House[samp_index,]
 
@@ -99,6 +99,7 @@ for(i in 1:n_all){
 }
 colnames(X_house) <- c("HHSize","Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")
 X_house <- as.data.frame(X_house)
+Data_indiv_truth <- X_indiv; Data_house_truth <- X_house
 
 ###### 11: Poke holes in Data:: Ignore missing household level data for now
 N <- nrow(X_indiv)
@@ -126,12 +127,22 @@ for(i in 1:n_miss){
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(X_indiv)
 others_names <- c("Gender","Race")
-O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.7)
+O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
 X_indiv[O_indiv==0] <- NA
 
-###### 12: Save!!!
+###### 12: Separate complete data
+Indiv_miss_index_HH_CC <- sort(unique(house_index[complete.cases(X_indiv)]))
+Indiv_miss_index_CC <- which(is.element(house_index,Indiv_miss_index_HH_CC)==TRUE)
+Data_indiv_cc <- X_indiv[Indiv_miss_index_CC,]
+Data_house_cc <- X_house[c(Indiv_miss_index_HH_CC),]
+
+###### 13: Save!!!
 write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
 write.table(X_indiv, file = "Data/X_indiv.txt",row.names = FALSE)
+write.table(Data_house_truth, file = "Results/Data_house_truth.txt",row.names = FALSE)
+write.table(Data_indiv_truth, file = "Results/Data_indiv_truth.txt",row.names = FALSE)
+write.table(Data_house_cc, file = "Results/Data_house_cc.txt",row.names = FALSE)
+write.table(Data_indiv_cc, file = "Results/Data_indiv_cc.txt",row.names = FALSE)
 ########################## End of Step 1 ########################## 
 
 
@@ -167,7 +178,6 @@ Data_indiv <- data.frame(X_indiv)
 for(i in 1:ncol(Data_indiv)){
   Data_indiv[,i] = factor(Data_indiv[,i],levels=level_indiv[[i]])
 }
-Data_indiv_truth <- Data_indiv; Data_house_truth <- Data_house
 
 
 ###### 2: Set global parameters for data
@@ -180,44 +190,37 @@ house_index <- rep(c(1:n),n_i)
 n_i_index <- rep(n_i,n_i)
 
 
-###### 3a: Missing data indexes
+###### 3: Missing data indexes
 NA_indiv <- Data_indiv; NA_house <- Data_house;
 struc_zero_variables <- c(1,4,5)
 nonstruc_zero_variables <- c(2,3)
 Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables])]))
 n_miss <- length(Indiv_miss_index_HH)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
-
-
-###### 3b: Separate complete data
-Indiv_miss_index_HH_CC <- sort(unique(house_index[complete.cases(NA_indiv)]))
-Indiv_miss_index_CC <- which(is.element(house_index,Indiv_miss_index_HH_CC)==TRUE)
-Data_indiv_cc <- Data_indiv[Indiv_miss_index_CC,]
-Data_house_cc <- Data_house[c(Indiv_miss_index_HH_CC),]
-
+n_i_miss <- n_i[Indiv_miss_index_HH]
 
 ###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
-proc_t <- proc.time()
+#proc_t <- proc.time()
 n_prop <- 50; MM <- 50
-NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=40,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
-writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
-writeFun(NDPMPM_proposals)
-remove(NDPMPM_proposals)
-(proc.time() - proc_t)[["elapsed"]]
+#NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=40,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+#                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
+#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+#  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
+#writeFun(NDPMPM_proposals)
+#remove(NDPMPM_proposals)
+#(proc.time() - proc_t)[["elapsed"]]
 
 
 ###### 4b: Run unaugmented model with rejection sampler at every iteration and save imputation (one time only!!!)
-proc_t <- proc.time()
-n_prop <- 50; MM <- 50
-NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=40,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-                           struc_zero=T,valid_prop=T,mc_thin=50,save_imp=T,save_prop=F)
-writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-  write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
-writeFun(NDPMPM_imput)
-remove(NDPMPM_imput)
-(proc.time() - proc_t)[["elapsed"]]
+#proc_t <- proc.time()
+#n_prop <- 50; MM <- 50
+#NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=40,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+#                           struc_zero=T,valid_prop=T,mc_thin=50,save_imp=T,save_prop=F)
+#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+#  write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
+#writeFun(NDPMPM_imput)
+#remove(NDPMPM_imput)
+#(proc.time() - proc_t)[["elapsed"]]
 
 
 ###### 5: Hybrid rejection
@@ -277,17 +280,17 @@ for(k in 1:p){
 
 
 ###### 7: Set parameters for structural zeros
-n_batch_init <- rep(1000,length(level_house[[1]])) #sample impossibles in batches before checking constraints
+n_batch_init <- 1000 #sample impossibles in batches before checking constraints
 n_0 <- rep(0,length(level_house[[1]]))
-n_batch_imp_init <- rep(50,n_miss) #sample imputations in batches before checking constraints
+n_batch_imp_init <- 20 #sample imputations in batches before checking constraints
 n_0_reject <- rep(0,n_miss)
-prop_batch <- 1.2
+prop_batch <- 1.3
 
 
 ###### 8: Weighting
 weight_option <- FALSE #set to true for weighting/capping option
 if(weight_option){
-  struc_weight <- c(1,1,1/2) #set weights: must be ordered & no household size must be excluded
+  struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
 } else {
   struc_weight <- rep(1,length(level_house[[1]])) #set weights: must be ordered & no household size must be excluded
 }
@@ -337,9 +340,25 @@ ALPHA <- BETA <- PII <- G_CLUST <- M_CLUST <- N_ZERO <- NULL
 proc_t <- proc.time() 
 source("MCMC.R")
 total_time <- (proc.time() - proc_t)[["elapsed"]]
-MCMC_Results <- list(Data_house_truth=Data_house_truth,Data_indiv_truth=Data_indiv_truth,
-                     Data_house_cc=Data_house_cc,Data_indiv_cc=Data_indiv_cc,
-                     dp_imput_indiv=dp_imput_indiv,dp_imput_house=dp_imput_house,total_time=total_time)
+if(hybrid_option){
+  if(weight_option){
+    MCMC_Results <- list(total_time_weighted_hybrid=total_time,
+                         dp_imput_indiv_weighted_hybrid=dp_imput_indiv,
+                         dp_imput_house_weighted_hybrid=dp_imput_house)
+  } else {
+    MCMC_Results <- list(total_time_hybrid=total_time,
+                         dp_imput_indiv_hybrid=dp_imput_indiv,
+                         dp_imput_house_hybrid=dp_imput_house)
+  }
+} else {
+  if(weight_option){
+    MCMC_Results <- list(total_time_weighted=total_time,
+                         dp_imput_indiv_weighted=dp_imput_indiv,
+                         dp_imput_house_weighted=dp_imput_house)
+  } else {
+    MCMC_Results <- list(total_time=total_time,dp_imput_indiv=dp_imput_indiv,dp_imput_house=dp_imput_house)
+  }
+}
 writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
     write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
 writeFun(MCMC_Results)
