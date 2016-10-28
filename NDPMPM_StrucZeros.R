@@ -100,7 +100,36 @@ for(i in 1:n_all){
 colnames(X_house) <- c("HHSize","Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")
 X_house <- as.data.frame(X_house)
 
-###### 11: Save!!!
+###### 11: Poke holes in Data:: Ignore missing household level data for now
+N <- nrow(X_indiv)
+n <- nrow(X_house)
+n_i <- as.numeric(as.character(X_house[,1]))
+p <- ncol(X_indiv)
+q <- ncol(X_house)
+house_index <- rep(c(1:n),n_i)
+n_miss <- 0.45*n
+Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
+Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
+for(i in 1:n_miss){
+  another_index <- which(is.element(house_index,Indiv_miss_index_HH[i])==TRUE)
+  sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
+  if(i <= (0.33*n_miss)){
+    X_indiv[sub_sample,"Age"] <- NA
+  }
+  if(i > (0.33*n_miss) & i <= (0.66*n_miss)){
+    X_indiv[sub_sample,"Relate"] <- NA
+  }
+  if(i > (0.66*n_miss)){
+    X_indiv[sub_sample,c("Age","Relate")] <- NA
+  }
+}
+O_indiv <- matrix(1,ncol=p,nrow=N)
+colnames(O_indiv) <- colnames(X_indiv)
+others_names <- c("Gender","Race")
+O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.7)
+X_indiv[O_indiv==0] <- NA
+
+###### 12: Save!!!
 write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
 write.table(X_indiv, file = "Data/X_indiv.txt",row.names = FALSE)
 ########################## End of Step 1 ########################## 
@@ -151,43 +180,20 @@ house_index <- rep(c(1:n),n_i)
 n_i_index <- rep(n_i,n_i)
 
 
-###### 3a: Poke holes in Data:: Ignore missing household level data for now 
-set.seed(419)
-n_miss <- 0.45*n #should be 0.45
-Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
-Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
-for(i in 1:n_miss){
-  another_index <- which(is.element(house_index,Indiv_miss_index_HH[i])==TRUE)
-  sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
-  if(i <= (0.33*n_miss)){
-    Data_indiv[sub_sample,"Age"] <- NA
-  }
-  if(i > (0.33*n_miss) & i <= (0.66*n_miss)){
-    Data_indiv[sub_sample,"Relate"] <- NA
-  }
-  if(i > (0.66*n_miss)){
-    Data_indiv[sub_sample,c("Age","Relate")] <- NA
-  }
-}
-O_indiv <- matrix(1,ncol=p,nrow=N)
-colnames(O_indiv) <- colnames(Data_indiv)
-others_names <- c("Gender","Race")
-O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.7)
-Data_indiv[O_indiv==0] <- NA
+###### 3a: Missing data indexes
 NA_indiv <- Data_indiv; NA_house <- Data_house;
-
 struc_zero_variables <- c(1,4,5)
 nonstruc_zero_variables <- c(2,3)
-Indiv_miss_index_HH <- sort(unique(house_index[which(complete.cases(NA_indiv[,struc_zero_variables])==FALSE)]))
+Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables])]))
 n_miss <- length(Indiv_miss_index_HH)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 
 
 ###### 3b: Separate complete data
-Indiv_miss_index_HH_CC <- sort(unique(house_index[which(complete.cases(NA_indiv)==TRUE)]))
+Indiv_miss_index_HH_CC <- sort(unique(house_index[complete.cases(NA_indiv)]))
 Indiv_miss_index_CC <- which(is.element(house_index,Indiv_miss_index_HH_CC)==TRUE)
-Data_indiv_cc <- Data_indiv[-Indiv_miss_index_CC,]
-Data_house_cc <- Data_house[-c(Indiv_miss_index_HH_CC),]
+Data_indiv_cc <- Data_indiv[Indiv_miss_index_CC,]
+Data_house_cc <- Data_house[c(Indiv_miss_index_HH_CC),]
 
 
 ###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
