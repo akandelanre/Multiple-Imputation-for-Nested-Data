@@ -225,7 +225,25 @@ n_i_miss <- n_i[Indiv_miss_index_HH]
 
 ###### 5: Hybrid rejection
 hybrid_option <- FALSE
+n_prop <- 50
 if(hybrid_option){
+  ###### 5a: First fill missing values for household level and non-structural zeros variables 
+  if(sum(is.na(NA_house)) > 0){
+    for (jj in 2:ncol(Data_house)){
+      Data_house[is.na(Data_house[,jj]),jj] <- 
+        sample(level_house[[jj]],length(Data_house[is.na(Data_house[,jj]),jj]),replace=T,
+               prob=summary(na.omit(Data_house[,jj])))
+    }
+  }
+  
+  if(sum(is.na(NA_indiv[nonstruc_zero_variables,])) > 0){
+    for (ii in nonstruc_zero_variables){
+      Data_indiv[is.na(Data_indiv[,ii]),ii] <- 
+        sample(level_indiv[[ii]],length(Data_indiv[is.na(Data_indiv[,ii]),ii]),replace=T,
+               prob=summary(na.omit(Data_indiv[,ii])))
+    }
+  }
+  
   ###### 5b: Load the posterior draws for individuals with the missing entries/data
   data_indiv_post <- read.table("Initial/DATA_INDIV_MISS.txt",header=TRUE)
   
@@ -245,6 +263,7 @@ if(hybrid_option){
     }
   }
   hybrid_prob <- c(0.2,0.8) #first probability is for rejection sampler
+
 } else {
   hybrid_prob <- c(1,0) #first probability is for rejection sampler
   ###### 5d: Fill missing values with starting values
