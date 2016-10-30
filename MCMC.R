@@ -217,10 +217,12 @@ for(mc in 1:n_iter){
   
   
   #check number of occupied clusters
-  S.occup <- NULL
+  S_occup <- NULL
   for(occ in sort(unique(G_all))){
-    S.occup <- rbind(S.occup,dim(table(rep_G_all[which(rep_G_all==occ)],M_all[which(rep_G_all==occ)]))[2])
+    S_occup <- rbind(S_occup,dim(table(rep_G_all[which(rep_G_all==occ)],M_all[which(rep_G_all==occ)]))[2])
   }
+  cat(paste("Number of Occupied Household Classes is ", length(unique(G_all)), "\n", sep = ''))
+  cat(paste("Max Number of Occupied Individual Classes is ", max(S_occup), "\n", sep = ''))
   remove(rep_G_all); remove(M_all); remove(G_all)
   
   
@@ -321,7 +323,7 @@ for(mc in 1:n_iter){
     #PII <- rbind(PII,c(pii))
     ALPHA <- rbind(ALPHA,alpha)
     #G_CLUST <- rbind(G_CLUST,length(unique(G)))
-    #M_CLUST <- rbind(M_CLUST,max(S.occup))
+    #M_CLUST <- rbind(M_CLUST,max(S_occup))
     BETA <- rbind(BETA,beta)
     #LAMBDA[(mc-burn_in),] <- c(lambda)
     #OMEGA[(mc-burn_in),] <- c(omega)
@@ -336,8 +338,6 @@ for(mc in 1:n_iter){
   
   #print
   elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
-  cat(paste("Number of Occupied Household Classes is ", length(unique(G)), "\n", sep = ''))
-  cat(paste("Max Number of Occupied Individual Classes is ", max(S.occup), "\n", sep = ''))
   cat(paste("Number of Sampled Augmented Households is ", sum(n_0), "\n", sep = ''))
   cat(paste("Number of Sampled Rejections for Missing Data is ", sum(n_0_reject), "\n", sep = ''))
   cat(paste("Total (True) Number of Sampled Augmented Households is ",

@@ -216,11 +216,11 @@ for(mc in 1:n_iter){
   
   
   #check number of occupied clusters
-  S.occup <- NULL
+  S_occup <- NULL
   for(occ in sort(unique(G_all))){
-    S.occup <- rbind(S.occup,dim(table(rep_G_all[which(rep_G_all==occ)],M_all[which(rep_G_all==occ)]))[2])
+    S_occup <- rbind(S_occup,dim(table(rep_G_all[which(rep_G_all==occ)],M_all[which(rep_G_all==occ)]))[2])
   }
-  remove(rep_G_all); remove(M_all); remove(G_all)
+  remove(rep_G_all); remove(M_all); 
   
   
   #sample missing X's
@@ -342,7 +342,7 @@ for(mc in 1:n_iter){
     #PII <- rbind(PII,c(pii))
     ALPHA <- rbind(ALPHA,alpha)
     #G_CLUST <- rbind(G_CLUST,length(unique(G)))
-    #M_CLUST <- rbind(M_CLUST,max(S.occup))
+    #M_CLUST <- rbind(M_CLUST,max(S_occup))
     BETA <- rbind(BETA,beta)
     #LAMBDA[(mc-burn_in),] <- c(lambda)
     #OMEGA[(mc-burn_in),] <- c(omega)
@@ -358,13 +358,14 @@ for(mc in 1:n_iter){
   #print
   elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
   cat("Iter:", formatC(mc, width=2, flag=" "),"\t"," ",
-      "F:",formatC(length(unique(G)), width=2, flag=" "),"\t",
-      "S:",formatC(max(S.occup), width=2, flag=" "),"\n",
+      "F:",formatC(length(unique(G_all)), width=2, flag=" "),"\t",
+      "S:",formatC(max(S_occup), width=2, flag=" "),"\n",
       #"alpha:",formatC(round(alpha,2), width=2, flag=" "),"\t",
       #"beta:",formatC(round(beta,2), width=2, flag=" "),"\t",
       "n0:",sum(n_0),"\t",
       "Eff n0:",(sum(n_0_reject)+sum(n_0)),"\t",
       "True n0:",(sum(n_0_reject)+sum(n_0/struc_weight)),"\n",
       "Time= ",elapsed_time,"\n","\n",sep = " ")
+  remove(G_all)
 }
 
