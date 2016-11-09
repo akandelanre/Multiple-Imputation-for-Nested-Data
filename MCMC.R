@@ -223,6 +223,7 @@ for(mc in 1:n_iter){
   }
   cat(paste("Number of Occupied Household Classes is ", length(unique(G_all)), "\n", sep = ''))
   cat(paste("Max Number of Occupied Individual Classes is ", max(S_occup), "\n", sep = ''))
+  cat(paste("Number of Sampled Augmented Households is ", sum(n_0), "\n", sep = ''))
   remove(rep_G_all); remove(M_all); remove(G_all)
   
   
@@ -232,13 +233,11 @@ for(mc in 1:n_iter){
     lambda_g <- t(lambda[,G])
     for(kkk in 2:q){
       if(length(which(is.na(NA_house[,kkk])==TRUE))>0){
-        pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),
-                                d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
+        pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
         Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
         cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
         level_house_q <- level_house[[kkk]]
-        Data_house[which(is.na(NA_house[,kkk])==TRUE),kkk] <-
-          level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
+        Data_house[which(is.na(NA_house[,kkk])==TRUE),kkk] <- level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
       }
     }
   }
@@ -322,12 +321,12 @@ for(mc in 1:n_iter){
   if(mc > burn_in){
     #PII <- rbind(PII,c(pii))
     ALPHA <- rbind(ALPHA,alpha)
-    #G_CLUST <- rbind(G_CLUST,length(unique(G)))
-    #M_CLUST <- rbind(M_CLUST,max(S_occup))
+    G_CLUST <- rbind(G_CLUST,length(unique(G)))
+    M_CLUST <- rbind(M_CLUST,max(S_occup))
     BETA <- rbind(BETA,beta)
     #LAMBDA[(mc-burn_in),] <- c(lambda)
     #OMEGA[(mc-burn_in),] <- c(omega)
-    N_ZERO <- rbind(N_ZERO,n_0)
+    N_ZERO <- rbind(N_ZERO,sum(n_0))
   }
   
   if(sum(mc==M_to_use_mc)==1){
@@ -337,11 +336,10 @@ for(mc in 1:n_iter){
   
   
   #print
-  elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
-  cat(paste("Number of Sampled Augmented Households is ", sum(n_0), "\n", sep = ''))
   cat(paste("Number of Sampled Rejections for Missing Data is ", sum(n_0_reject), "\n", sep = ''))
   cat(paste("Total (True) Number of Sampled Augmented Households is ",
             (sum(n_0_reject)+sum(n_0/struc_weight)),"\n", sep = ''))
+  elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
   cat(paste("Elapsed Time = ", elapsed_time, "\n\n", sep = ' '))
 }
 

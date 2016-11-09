@@ -17,36 +17,45 @@ rm(list = ls())
 House <- read.csv("Data/House.csv",header=T)
 Indiv <- read.csv("Data/Indiv.csv",header=T)
 
+
 ###### 2: Remove Households with size < 2 and > 4
 House <- House[which(House$NP >= 2 & House$NP <= 4),]
+
 
 ###### 3: Keep only Households with TEN == 1,2,or 3 and recode 1,2 as 1 and 3 as 2
 House <- House[which(House$TEN == 1 | House$TEN == 2 | House$TEN == 3),]
 House$TEN[which(House$TEN == 2)] <- 1
 House$TEN[which(House$TEN == 3)] <- 2
 
+
 ###### 4: Take a sample of size 2,000 Households
-set.seed(409)
+set.seed(0000)
 sample_size <- 5000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
 House <- House[samp_index,]
+
 
 ###### 5: Pick the same households in the indiv data
 pick_index <- is.element(Indiv$SERIALNO,House$SERIALNO)
 Indiv <- Indiv[pick_index,]
 
+
 ###### 6: Recode within-household variables
 ###### 6a: First, the relationship variable
-Indiv$RELP[which(Indiv$RELP == 12 | Indiv$RELP == 13)] <- 11
-Indiv$RELP[which(Indiv$RELP == 14 | Indiv$RELP == 15)] <- 12
-Indiv$RELP[which(Indiv$RELP == 2 | Indiv$RELP == 4)] <- 3
-Indiv$RELP[which(Indiv$RELP == 1)] <- 2
-Indiv$RELP[which(Indiv$RELP == 0)] <- 1
-Indiv$RELP[which(Indiv$RELP == 9)] <- 4
-Indiv$RELP[which(Indiv$RELP == 7)] <- 9
-Indiv$RELP[which(Indiv$RELP == 5)] <- 7
-Indiv$RELP[which(Indiv$RELP == 6)] <- 5
-Indiv$RELP[which(Indiv$RELP == 8)] <- 6
+Indiv$RELP[which(Indiv$RELP == 11 | Indiv$RELP == 12 | Indiv$RELP == 13)] <- 12 #Boarder, roommate or partner
+Indiv$RELP[which(Indiv$RELP == 14 | Indiv$RELP == 15)] <- 13 #Other non-relative or foster child
+Indiv$RELP[which(Indiv$RELP == 10)] <- 11 #Other relative
+Indiv$RELP[which(Indiv$RELP == 9)] <- 10 #Child-in-law
+Indiv$RELP[which(Indiv$RELP == 8)] <- 9 #Parent-in-law
+Indiv$RELP[which(Indiv$RELP == 7)] <- 8 #Grandchild
+Indiv$RELP[which(Indiv$RELP == 6)] <- 7 #Parent
+Indiv$RELP[which(Indiv$RELP == 5)] <- 6 #Sibling
+Indiv$RELP[which(Indiv$RELP == 4)] <- 5 #Stepchild
+Indiv$RELP[which(Indiv$RELP == 3)] <- 4 #Adopted child
+Indiv$RELP[which(Indiv$RELP == 2)] <- 3 #Biological child
+Indiv$RELP[which(Indiv$RELP == 1)] <- 2 #Spouse
+Indiv$RELP[which(Indiv$RELP == 0)] <- 1 #Household head
+
 ###### 6b: Next, the race variable
 Indiv$RAC3P[which(Indiv$RAC3P == 4 | Indiv$RAC3P == 8| Indiv$RAC3P == 9 | Indiv$RAC3P == 10)] <- 6
 Indiv$RAC3P[which(Indiv$RAC3P == 5)] <- 4
@@ -54,14 +63,18 @@ Indiv$RAC3P[which(Indiv$RAC3P == 7)] <- 5
 Indiv$RAC3P[which(Indiv$RAC3P >= 11 & Indiv$RAC3P <= 15)] <- 7
 Indiv$RAC3P[which(Indiv$RAC3P >= 16 & Indiv$RAC3P <= 59)] <- 8
 Indiv$RAC3P[which(Indiv$RAC3P >= 60 & Indiv$RAC3P <= 100)] <- 9
+
 ###### 6c: Next, the hisp variable
 Indiv$HISP[which(Indiv$HISP >= 5 & Indiv$HISP <= 24)] <- 5
+
 ###### 6d: Lastly, age
 Indiv$AGEP <- Indiv$AGEP + 1L
+
 
 ###### 7: Make household head into household level data
 HHhead_data <- Indiv[which(Indiv$SPORDER==1),]
 Indiv_minHH <- Indiv[-which(Indiv$SPORDER==1),]
+
 
 ###### 8: Combine Household and within-household data using the following ordering:
 ###### c("HHIndex","WithinHHIndex","Gender","Race","Hisp","Age","Relate","Owner")
@@ -69,7 +82,6 @@ Indiv_minHH <- Indiv[-which(Indiv$SPORDER==1),]
 #                       Gender = Indiv$SEX,Race = Indiv$RAC3P,Hisp = Indiv$HISP,
 #                       Age = Indiv$AGEP,Relate = Indiv$RELP,Owner = rep(House$TEN,House$NP))
 #colnames(origdata) <- c("HHIndex","WithinHHIndex","Gender","Race","Hisp","Age","Relate","Owner")
-
 origdata <- data.frame(HHIndex = rep(c(1:sample_size),(House$NP-1L)),
                        WithinHHIndex = Indiv_minHH$SPORDER,
                        Gender = Indiv_minHH$SEX,Race = Indiv_minHH$RAC3P,Hisp = Indiv_minHH$HISP,
@@ -81,11 +93,14 @@ origdata <- data.frame(HHIndex = rep(c(1:sample_size),(House$NP-1L)),
                        HHAge = rep(HHhead_data$AGEP,(House$NP-1L)),
                        HHRelate = rep(HHhead_data$RELP,(House$NP-1L)))
 
+
 ###### 8: Save!!!
-write.table(origdata,"Data/origdata.txt",row.names = FALSE)
+#write.table(origdata,"Data/origdata.txt",row.names = FALSE)
+
 
 ###### 9: Load the data back
-origdata <- read.table("Data/origdata.txt",header=T)
+#origdata <- read.table("Data/origdata.txt",header=T)
+
 
 ###### 10: Separate household and individual data
 n_all <- length(unique(origdata$HHIndex))
@@ -101,40 +116,65 @@ colnames(X_house) <- c("HHSize","Owner","HHGender","HHRace","HHHisp","HHAge","HH
 X_house <- as.data.frame(X_house)
 Data_indiv_truth <- X_indiv; Data_house_truth <- X_house
 
+
 ###### 11: Poke holes in Data:: Ignore missing household level data for now
+set.seed(0000)
 N <- nrow(X_indiv)
 n <- nrow(X_house)
 n_i <- as.numeric(as.character(X_house[,1]))
 p <- ncol(X_indiv)
 q <- ncol(X_house)
 house_index <- rep(c(1:n),n_i)
-n_miss <- 0.45*n
-Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
-Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
-for(i in 1:n_miss){
-  another_index <- which(is.element(house_index,Indiv_miss_index_HH[i])==TRUE)
-  sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
-  if(i <= (0.33*n_miss)){
-    X_indiv[sub_sample,"Age"] <- NA
-  }
-  if(i > (0.33*n_miss) & i <= (0.66*n_miss)){
-    X_indiv[sub_sample,"Relate"] <- NA
-  }
-  if(i > (0.66*n_miss)){
-    X_indiv[sub_sample,c("Age","Relate")] <- NA
-  }
-}
+O_house <- matrix(1,ncol=q,nrow=n)
+colnames(O_house) <- colnames(X_house)
+quick_miss_index <- 2:(q-1)
+O_house[,quick_miss_index] <- rbinom((n*length(quick_miss_index)),1,0.70)
+X_house[O_house==0] <- NA
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(X_indiv)
-others_names <- c("Gender","Race")
+others_names <- c("Gender","Race","Hisp","Relate")
 O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
+O_indiv[which(X_indiv$Relate==2),"Age"] <- rbinom(length(which(X_indiv$Relate == 2)),1,0.50)
+O_indiv[which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10),"Age"] <- 
+  rbinom(length(which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10)),1,0.80)
+O_indiv[which(X_indiv$Relate==7 | X_indiv$Relate==9),"Age"] <- rbinom(length(which(X_indiv$Relate==7 | X_indiv$Relate==9)),1,0.65)
+O_indiv[which(X_indiv$Age <= 20),"Relate"] <- rbinom(length(which(X_indiv$Age <= 20)),1,0.60)
+O_indiv[which(X_indiv$Age > 70),"Relate"] <- rbinom(length(which(X_indiv$Age > 70)),1,0.45)
+O_indiv[which(X_indiv$Age > 20 & X_indiv$Age <= 50),"Relate"] <- rbinom(length(which(X_indiv$Age > 20 & X_indiv$Age <= 50)),1,0.70)
+O_indiv[which(X_indiv$Age > 50 & X_indiv$Age <= 70),"Relate"] <- rbinom(length(which(X_indiv$Age > 50 & X_indiv$Age <= 70)),1,0.90)
+#colSums(O_indiv)/N
 X_indiv[O_indiv==0] <- NA
 
+#n_miss <- 0.45*n
+#Indiv_miss_index_HH <- sample(1:n,n_miss,replace=FALSE)
+#Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE) #already sorted
+#for(i in 1:n_miss){
+#  another_index <- which(is.element(house_index,Indiv_miss_index_HH[i])==TRUE)
+#  sub_sample <- another_index[sample(length(another_index),sample(length(another_index),1,replace=F),replace=F)]
+#  if(i <= (0.33*n_miss)){
+#    X_indiv[sub_sample,"Age"] <- NA
+#  }
+#  if(i > (0.33*n_miss) & i <= (0.66*n_miss)){
+#    X_indiv[sub_sample,"Relate"] <- NA
+#  }
+#  if(i > (0.66*n_miss)){
+#    X_indiv[sub_sample,c("Age","Relate")] <- NA
+#  }
+#}
+#O_indiv <- matrix(1,ncol=p,nrow=N)
+#colnames(O_indiv) <- colnames(X_indiv)
+#others_names <- c("Gender","Race")
+#O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
+#X_indiv[O_indiv==0] <- NA
+
+
 ###### 12: Separate complete data
-Indiv_miss_index_HH_CC <- sort(unique(house_index[complete.cases(X_indiv)]))
-Indiv_miss_index_CC <- which(is.element(house_index,Indiv_miss_index_HH_CC)==TRUE)
+House_miss_index_CC <- which(complete.cases(X_house)==TRUE)
+House_miss_index_CC <- sort(unique(c(house_index[complete.cases(X_indiv)],House_miss_index_CC)))
+Indiv_miss_index_CC <- which(is.element(house_index,House_miss_index_CC)==TRUE)
 Data_indiv_cc <- X_indiv[Indiv_miss_index_CC,]
-Data_house_cc <- X_house[c(Indiv_miss_index_HH_CC),]
+Data_house_cc <- X_house[House_miss_index_CC,]
+
 
 ###### 13: Save!!!
 write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
@@ -168,8 +208,8 @@ source("OtherFunctions/OtherFunctions.R")
 source("OtherFunctions/NDPMPM_No_StrucZeros.R")
 X_house = read.table("Data/X_house.txt",header=TRUE)
 X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
-level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:100),c(2:12))
-level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(1:100),c(1))
+level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:96),c(2:13))
+level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(1:96),c(1))
 Data_house <- data.frame(X_house)
 for(i in 1:ncol(Data_house)){
   Data_house[,i] = factor(Data_house[,i],levels=level_house[[i]])
@@ -197,7 +237,7 @@ nonstruc_zero_variables <- c(2,3)
 Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables])]))
 n_miss <- length(Indiv_miss_index_HH)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
-n_i_miss <- n_i[Indiv_miss_index_HH]
+#n_i_miss <- n_i[Indiv_miss_index_HH]
 
 ###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
 #proc_tt <- proc.time()
@@ -221,10 +261,11 @@ n_i_miss <- n_i[Indiv_miss_index_HH]
 #writeFun(NDPMPM_imput)
 #remove(NDPMPM_imput)
 #(proc.time() - proc_tt)[["elapsed"]]
+#write.table((proc.time() - proc_tt)[["elapsed"]], file = "Results/total_time_nz.txt",row.names = FALSE)
 
 
 ###### 5: Hybrid rejection
-hybrid_option <- FALSE
+hybrid_option <- TRUE
 n_prop <- 50
 if(hybrid_option){
   ###### 5a: First fill missing values for household level and non-structural zeros variables 
@@ -307,7 +348,7 @@ prop_batch <- 1.2
 
 
 ###### 8: Weighting
-weight_option <- FALSE #set to true for weighting/capping option
+weight_option <- TRUE #set to true for weighting/capping option
 if(weight_option){
   struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
 } else {
@@ -363,19 +404,29 @@ if(hybrid_option){
   if(weight_option){
     MCMC_Results <- list(total_time_weighted_hybrid=total_time,
                          dp_imput_indiv_weighted_hybrid=dp_imput_indiv,
-                         dp_imput_house_weighted_hybrid=dp_imput_house)
+                         dp_imput_house_weighted_hybrid=dp_imput_house,
+                         ALPHA_weighted_hybrid=ALPHA,BETA_weighted_hybrid=BETA,
+                         N_ZERO_weighted_hybrid=N_ZERO,
+                         M_CLUST_weighted_hybrid=M_CLUST,G_CLUST_weighted_hybrid=G_CLUST)
   } else {
     MCMC_Results <- list(total_time_hybrid=total_time,
                          dp_imput_indiv_hybrid=dp_imput_indiv,
-                         dp_imput_house_hybrid=dp_imput_house)
+                         dp_imput_house_hybrid=dp_imput_house,
+                         ALPHA_hybrid=ALPHA,BETA_hybrid=BETA,N_ZERO_hybrid=N_ZERO,
+                         M_CLUST_hybrid=M_CLUST,G_CLUST_hybrid=G_CLUST)
   }
 } else {
   if(weight_option){
     MCMC_Results <- list(total_time_weighted=total_time,
                          dp_imput_indiv_weighted=dp_imput_indiv,
-                         dp_imput_house_weighted=dp_imput_house)
+                         dp_imput_house_weighted=dp_imput_house,
+                         ALPHA_weighted=ALPHA,BETA_weighted=BETA,N_ZERO_weighted=N_ZERO,
+                         M_CLUST_weighted=M_CLUST,G_CLUST_weighted=G_CLUST)
   } else {
-    MCMC_Results <- list(total_time=total_time,dp_imput_indiv=dp_imput_indiv,dp_imput_house=dp_imput_house)
+    MCMC_Results <- list(total_time=total_time,dp_imput_indiv=dp_imput_indiv,
+                         dp_imput_house=dp_imput_house,
+                         ALPHA=ALPHA,BETA=BETA,N_ZERO=N_ZERO,
+                         M_CLUST=M_CLUST,G_CLUST=G_CLUST)
   }
 }
 writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){

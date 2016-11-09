@@ -191,6 +191,9 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
     for(occ in sort(unique(G))){
       S_occup = rbind(S_occup,dim(table(rep_G[which(rep_G==occ)],M[which(rep_G==occ)]))[2])
     }
+    cat(paste("Number of Occupied Household Classes is ", length(unique(G)), "\n", sep = ''))
+    cat(paste("Max Number of Occupied Individual Classes is ", max(S_occup), "\n", sep = ''))
+    
     
     #sample missing data
     #first household
@@ -283,10 +286,10 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
     #save and sample synthetic data
     if(mc > burn_in){
       #PII = rbind(PII,c(pii))
-      #ALPHA = rbind(ALPHA,alpha)
-      #G_CLUST = rbind(G_CLUST,c(G))
-      #M_CLUST = rbind(M_CLUST,c(M))
-      #BETA = rbind(BETA,beta)
+      ALPHA = rbind(ALPHA,alpha)
+      BETA = rbind(BETA,beta)
+      G_CLUST <- rbind(G_CLUST,length(unique(G)))
+      M_CLUST <- rbind(M_CLUST,max(S_occup))
       #LAMBDA = LAMBDA + lambda
       #OMEGA = OMEGA + omega
       #PHI <- PHI + phi
@@ -351,8 +354,6 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
     
     #print
     elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
-    cat(paste("Number of Occupied Household Classes is ", length(unique(G)), "\n", sep = ''))
-    cat(paste("Max Number of Occupied Individual Classes is ", max(S_occup), "\n", sep = ''))
     cat(paste("Number of Sampled Rejections for Missing Data is ",
               ifelse(sum(mc==n_prop_to_use_mc)==1 |sum(mc==M_to_use_mc)==1 |struc_zero,sum(n_0_reject),0),"\n",sep =''))
     cat(paste("Elapsed Time = ", elapsed_time, "\n\n", sep = ' '))
@@ -360,11 +361,15 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
   #list(dp_imput_indiv_nz=dp_imput_indiv_nz,dp_imput_house_nz=dp_imput_house_nz,DATA_INDIV_MISS=DATA_INDIV_MISS,
   #     DATA_HOUSE_MISS=DATA_HOUSE_MISS,PII=PII,ALPHA=ALPHA,BETA=BETA,LAMBDA=LAMBDA,OMEGA=OMEGA,PHI=PHI)
   if(save_imp && !save_prop){
-    list(dp_imput_indiv_nz=dp_imput_indiv_nz,dp_imput_house_nz=dp_imput_house_nz)
+    list(dp_imput_indiv_nz=dp_imput_indiv_nz,dp_imput_house_nz=dp_imput_house_nz,
+         ALPHA_nz=ALPHA,BETA_nz=BETA,M_CLUST_nz=M_CLUST,G_CLUST_nz=G_CLUST)
   } else if(save_prop && !save_imp){
-    list(DATA_INDIV_MISS=DATA_INDIV_MISS)
+    list(DATA_INDIV_MISS=DATA_INDIV_MISS,
+         ALPHA_nz=ALPHA,BETA_nz=BETA,M_CLUST_nz=M_CLUST,G_CLUST_nz=G_CLUST)
   } else if(save_prop && save_imp){
-    list(dp_imput_indiv_nz=dp_imput_indiv_nz,dp_imput_house_nz=dp_imput_house_nz,DATA_INDIV_MISS=DATA_INDIV_MISS)
+    list(dp_imput_indiv_nz=dp_imput_indiv_nz,dp_imput_house_nz=dp_imput_house_nz,
+         DATA_INDIV_MISS=DATA_INDIV_MISS,
+         ALPHA_nz=ALPHA,BETA_nz=BETA,M_CLUST_nz=M_CLUST,G_CLUST_nz=G_CLUST)
   }
 }
 
