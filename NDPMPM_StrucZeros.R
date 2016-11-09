@@ -127,7 +127,7 @@ q <- ncol(X_house)
 house_index <- rep(c(1:n),n_i)
 O_house <- matrix(1,ncol=q,nrow=n)
 colnames(O_house) <- colnames(X_house)
-quick_miss_index <- 2:(q-1)
+quick_miss_index <- c("Owner","HHRace","HHHisp")
 O_house[,quick_miss_index] <- rbinom((n*length(quick_miss_index)),1,0.70)
 X_house[O_house==0] <- NA
 O_indiv <- matrix(1,ncol=p,nrow=N)
