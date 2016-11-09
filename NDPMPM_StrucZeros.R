@@ -247,7 +247,6 @@ NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,bu
 writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
   write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
 writeFun(NDPMPM_proposals)
-remove(NDPMPM_proposals)
 (proc.time() - proc_tt)[["elapsed"]]
 
 
@@ -259,10 +258,13 @@ NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_i
 writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
   write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
 writeFun(NDPMPM_imput)
-remove(NDPMPM_imput)
 (proc.time() - proc_tt)[["elapsed"]]
 write.table((proc.time() - proc_tt)[["elapsed"]], file = "Results/total_time_nz.txt",row.names = FALSE)
 
+
+###### 4c: Free some memory
+remove(NDPMPM_proposals)
+remove(NDPMPM_imput)
 
 ###### 5: Hybrid rejection
 hybrid_option <- TRUE
