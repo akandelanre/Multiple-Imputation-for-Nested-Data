@@ -209,7 +209,7 @@ source("OtherFunctions/NDPMPM_No_StrucZeros.R")
 X_house = read.table("Data/X_house.txt",header=TRUE)
 X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
 level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:96),c(2:13))
-level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(1:96),c(1))
+level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(16:96),c(1))
 Data_house <- data.frame(X_house)
 for(i in 1:ncol(Data_house)){
   Data_house[,i] = factor(Data_house[,i],levels=level_house[[i]])
@@ -240,28 +240,28 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #n_i_miss <- n_i[Indiv_miss_index_HH]
 
 ###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
-#proc_tt <- proc.time()
-#n_prop <- 50; MM <- 50
-#NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-#                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
-#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-#  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
-#writeFun(NDPMPM_proposals)
-#remove(NDPMPM_proposals)
-#(proc.time() - proc_tt)[["elapsed"]]
+proc_tt <- proc.time()
+n_prop <- 50; MM <- 50
+NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
+writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
+writeFun(NDPMPM_proposals)
+remove(NDPMPM_proposals)
+(proc.time() - proc_tt)[["elapsed"]]
 
 
 ###### 4b: Run unaugmented model with rejection sampler at every iteration and save imputation (one time only!!!)
-#proc_tt <- proc.time()
-#n_prop <- 50; MM <- 50
-#NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-#                           struc_zero=T,valid_prop=T,mc_thin=50,save_imp=T,save_prop=F)
-#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-#  write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
-#writeFun(NDPMPM_imput)
-#remove(NDPMPM_imput)
-#(proc.time() - proc_tt)[["elapsed"]]
-#write.table((proc.time() - proc_tt)[["elapsed"]], file = "Results/total_time_nz.txt",row.names = FALSE)
+proc_tt <- proc.time()
+n_prop <- 50; MM <- 50
+NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+                           struc_zero=T,valid_prop=T,mc_thin=50,save_imp=T,save_prop=F)
+writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+  write.table(LL[[i]],paste0("Results/",i,".txt"),row.names = FALSE)}}
+writeFun(NDPMPM_imput)
+remove(NDPMPM_imput)
+(proc.time() - proc_tt)[["elapsed"]]
+write.table((proc.time() - proc_tt)[["elapsed"]], file = "Results/total_time_nz.txt",row.names = FALSE)
 
 
 ###### 5: Hybrid rejection

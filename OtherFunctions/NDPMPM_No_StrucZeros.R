@@ -110,7 +110,8 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
   n_prop_to_use_mc <- sort(sample(seq((burn_in +1),n_iter,by=mc_thin),n_prop,replace=F))
   FFF_indiv = matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
   FFF_house = matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
-  #ALPHA = BETA = PII = G_CLUST = M_CLUST = NULL
+  ALPHA = BETA = G_CLUST = M_CLUST = NULL
+  #PII = NULL
   #LAMBDA = matrix(0,ncol=ncol(lambda),nrow=nrow(lambda))
   #OMEGA = matrix(0,ncol=ncol(omega),nrow=nrow(omega))
   #PHI <- matrix(0,ncol=ncol(phi),nrow=nrow(phi))
