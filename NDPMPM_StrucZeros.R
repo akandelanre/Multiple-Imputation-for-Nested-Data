@@ -29,7 +29,7 @@ House$TEN[which(House$TEN == 3)] <- 2
 
 
 ###### 4: Take a sample of size 2,000 Households
-set.seed(0000)
+set.seed(1010)
 sample_size <- 5000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
 House <- House[samp_index,]
@@ -137,10 +137,10 @@ O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
 O_indiv[which(X_indiv$Relate==2),"Age"] <- rbinom(length(which(X_indiv$Relate == 2)),1,0.50)
 O_indiv[which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10),"Age"] <- 
   rbinom(length(which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10)),1,0.80)
-O_indiv[which(X_indiv$Relate==7 | X_indiv$Relate==9),"Age"] <- rbinom(length(which(X_indiv$Relate==7 | X_indiv$Relate==9)),1,0.65)
+O_indiv[which(X_indiv$Relate==7 | X_indiv$Relate==9),"Age"] <- rbinom(length(which(X_indiv$Relate==7 | X_indiv$Relate==9)),1,0.60)
 O_indiv[which(X_indiv$Age <= 20),"Relate"] <- rbinom(length(which(X_indiv$Age <= 20)),1,0.60)
 O_indiv[which(X_indiv$Age > 70),"Relate"] <- rbinom(length(which(X_indiv$Age > 70)),1,0.45)
-O_indiv[which(X_indiv$Age > 20 & X_indiv$Age <= 50),"Relate"] <- rbinom(length(which(X_indiv$Age > 20 & X_indiv$Age <= 50)),1,0.70)
+O_indiv[which(X_indiv$Age > 20 & X_indiv$Age <= 50),"Relate"] <- rbinom(length(which(X_indiv$Age > 20 & X_indiv$Age <= 50)),1,0.75)
 O_indiv[which(X_indiv$Age > 50 & X_indiv$Age <= 70),"Relate"] <- rbinom(length(which(X_indiv$Age > 50 & X_indiv$Age <= 70)),1,0.90)
 #colSums(O_indiv)/N
 X_indiv[O_indiv==0] <- NA

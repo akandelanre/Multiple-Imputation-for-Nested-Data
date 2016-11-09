@@ -287,7 +287,8 @@ for(mc in 1:n_iter){
           }
           #Check edit rules
           comb_to_check <- matrix(t(Data_indiv_prop),nrow=n_batch_imp[sss],byrow=TRUE)
-          comb_to_check_HH <-matrix(rep(as.numeric(as.character(Data_house[Indiv_miss_index_HH[sss],(q-p+1):q])),
+          NA_house_prop <- Data_house[Indiv_miss_index_HH[sss],(q-p+1):q] 
+          comb_to_check_HH <-matrix(rep(apply(NA_house_prop,2,function(x) as.numeric(as.character(x))),
                                         n_batch_imp[sss]),nrow=n_batch_imp[sss],byrow = T)
           comb_to_check <- cbind(comb_to_check_HH,comb_to_check)
           check_counter <- checkSZ(comb_to_check,n_another_index)
