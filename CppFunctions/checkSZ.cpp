@@ -2,16 +2,17 @@
 #include <cmath>
 using namespace Rcpp;
 using namespace std;
-
+  
 #define HEAD 1
 #define SPOUSE 2
-#define CHILD 3
-#define CHILDINLAW 4
-#define PARENT 5
-#define PARENTINLAW 6
-#define SIBLING 7
-#define SIBLINGINLAW 8
-#define GRANDCHILD 9
+#define BIOLOGICALCHILD 3
+#define ADOPTEDCHILD 4
+#define STEPCHILD 5
+#define SIBLING 6
+#define PARENT 7
+#define GRANDCHILD 8
+#define PARENTINLAW 9
+#define CHILDINLAW 10
 
 #define GENDER 0
 #define AGE 3
@@ -27,7 +28,7 @@ inline int GetHead(NumericMatrix hh_to_check, int h) {
 }
 
 inline bool IsHead(double relate, double age) {
-  return (relate == HEAD && age >=15);
+  return (relate == HEAD && age >=16);
 }
 
 inline bool MoreThanOneHead(NumericMatrix hh_to_check, int h) {
@@ -51,7 +52,7 @@ inline int GetValidSpouse(NumericMatrix hh_to_check, int h) {
   }
   if (nspouse > 1) {return -2;} //too many spouse
   if (nspouse == 0) { return -1;} //no spouse
-  if (hh_to_check(spouse,AGE)<15) {return -2;} //spouse is under-age
+  if (hh_to_check(spouse,AGE)<16) {return -2;} //spouse is under-age
   return spouse;
 }
 
@@ -61,19 +62,19 @@ inline bool IsValidCouple(NumericMatrix hh_to_check, int spouse, int head) {
   } else { //valid spouse or no spouse
     if (spouse >= 0) {//the only spouse, so check sex, and age difference
       if (hh_to_check(head,GENDER) == hh_to_check(spouse,GENDER)) {return false;}
-      if (std::abs(hh_to_check(head,AGE) - hh_to_check(spouse,AGE)) > 52) {return false;}
+      if (std::abs(hh_to_check(head,AGE) - hh_to_check(spouse,AGE)) > 49) {return false;}
     }
   }
   return true;
 }
 
-//return -1 if no child
-//return the record index of the oldest child otherwise
-inline int GetOldestChild(NumericMatrix hh_to_check, int h) {
+//return -1 if no biological child
+//return the record index of the oldest biological child otherwise
+inline int GetOldestBiologicalChild(NumericMatrix hh_to_check, int h) {
   double age = -1;
-  int child = -1;  //no childen
+  int child = -1;  //no biological childen
   for (int i = 0; i < h; i++) {
-    if (hh_to_check(i,RELATE)==CHILD) {
+    if (hh_to_check(i,RELATE)==BIOLOGICALCHILD) {
       if (hh_to_check(i,AGE) > age) {
         age = hh_to_check(i,AGE);
         child = i;
@@ -83,20 +84,21 @@ inline int GetOldestChild(NumericMatrix hh_to_check, int h) {
   return child;
 }
 
-inline bool IsValidChild(NumericMatrix hh_to_check, int child, int head) {
-  if (child>=0) {//get a child, check age difference
-    if (hh_to_check(head,AGE) - hh_to_check(child,AGE) <12) {return false;}
+inline bool IsValidBiologicalChild(NumericMatrix hh_to_check, int child, int head) {
+  if (child>=0) {//get a biological child, check age difference
+    if (hh_to_check(head,AGE) - hh_to_check(child,AGE) < 7) {return false;}
   }
   return true;
 }
 
-//return -1 if no childinlaw
-//return the record index of the oldest childinlaw otherwise
-inline int GetOldestChildInLaw(NumericMatrix hh_to_check, int h) {
+
+//return -1 if no adopted child
+//return the record index of the oldest adopted child otherwise
+inline int GetOldestAdoptedChild(NumericMatrix hh_to_check, int h) {
   double age = -1;
-  int child = -1;  //no childen
+  int child = -1;  //no adopted childen
   for (int i = 0; i < h; i++) {
-    if (hh_to_check(i,RELATE)==CHILDINLAW) {
+    if (hh_to_check(i,RELATE)==ADOPTEDCHILD) {
       if (hh_to_check(i,AGE) > age) {
         age = hh_to_check(i,AGE);
         child = i;
@@ -106,12 +108,37 @@ inline int GetOldestChildInLaw(NumericMatrix hh_to_check, int h) {
   return child;
 }
 
-inline bool IsValidChildInLaw(NumericMatrix hh_to_check, int childinlaw, int head) {
-  if (childinlaw >= 0) {//get a child, check age difference
-    if (hh_to_check(head,AGE) - hh_to_check(childinlaw,AGE) <7) {return false;}
+inline bool IsValidAdoptedChild(NumericMatrix hh_to_check, int child, int head) {
+  if (child>=0) {//get an adopted child, check age difference
+    if (hh_to_check(head,AGE) - hh_to_check(child,AGE) <11) {return false;}
   }
   return true;
 }
+
+
+//return -1 if no step child
+//return the record index of the oldest step child otherwise
+inline int GetOldestStepChild(NumericMatrix hh_to_check, int h) {
+  double age = -1;
+  int child = -1;  //no step childen
+  for (int i = 0; i < h; i++) {
+    if (hh_to_check(i,RELATE)==STEPCHILD) {
+      if (hh_to_check(i,AGE) > age) {
+        age = hh_to_check(i,AGE);
+        child = i;
+      }
+    }
+  }
+  return child;
+}
+
+inline bool IsValidStepChild(NumericMatrix hh_to_check, int child, int head) {
+  if (child>=0) {//get a step child, check age difference
+    if (hh_to_check(head,AGE) - hh_to_check(child,AGE) <9) {return false;}
+  }
+  return true;
+}
+
 
 //return -1 if no parent
 //return the record index of the youngest parent otherwise
@@ -131,7 +158,7 @@ inline int GetYoungestParent(NumericMatrix hh_to_check, int h) {
 
 inline bool IsValidParent(NumericMatrix hh_to_check, int parent, int head) {
   if (parent >= 0) {//get a child, check age difference
-    if (hh_to_check(parent,AGE) - hh_to_check(head,AGE) < 13) {return false;}
+    if (hh_to_check(parent,AGE) - hh_to_check(head,AGE) < 4) {return false;}
   }
   return true;
 }
@@ -154,16 +181,16 @@ inline int GetYoungestParentInLaw(NumericMatrix hh_to_check, int h) {
 
 inline bool IsValidParentInLaw(NumericMatrix hh_to_check, int parentinlaw, int head) {
   if (parentinlaw >= 0) {//get a child, check age difference
-    if (hh_to_check(parentinlaw,AGE) - hh_to_check(head,AGE) < 9) {return false;}
+    if (hh_to_check(parentinlaw,AGE) - hh_to_check(head,AGE) < 4) {return false;}
   }
   return true;
 }
 
 
-inline bool IsValidSiblingOrSiblingInLaw(NumericMatrix hh_to_check, int h, int head) {
+inline bool IsValidSibling(NumericMatrix hh_to_check, int h, int head) {
   for (int i = 0; i < h; i++) {
-    if (hh_to_check(i,RELATE) == SIBLING || hh_to_check(i,RELATE) == SIBLINGINLAW) {
-      if (std::abs(hh_to_check(i,AGE) - hh_to_check(head,AGE)) > 35) {return false;}
+    if (hh_to_check(i,RELATE) == SIBLING) {
+      if (std::abs(hh_to_check(i,AGE) - hh_to_check(head,AGE)) > 37) {return false;}
     }
   }
   return true;
@@ -172,11 +199,11 @@ inline bool IsValidSiblingOrSiblingInLaw(NumericMatrix hh_to_check, int h, int h
 inline bool IsValidGrandChild(NumericMatrix hh_to_check, int h, int spouse, int head) {
   for (int i = 0; i < h; i++) {
     if (hh_to_check(i,RELATE)== GRANDCHILD) {
-      if (hh_to_check(head,AGE) < 33) {return false;} //too young to be grand parent for the HEAD
+      if (hh_to_check(head,AGE) < 31) {return false;} //too young to be grand parent for the HEAD
       if (spouse >= 0) { //make sure the spouse(if any) is not too young
-        if (hh_to_check(spouse,AGE) < 33) {return false;}
+        if (hh_to_check(spouse,AGE) < 17) {return false;}
       }
-      if (hh_to_check(head,AGE) - hh_to_check(i,AGE) < 30) {return false;}
+      if (hh_to_check(head,AGE) - hh_to_check(i,AGE) < 26) {return false;}
     }
   }
   return true;
@@ -193,11 +220,14 @@ inline int isValid(NumericMatrix hh_to_check, int h) {
   int spouse = GetValidSpouse(hh_to_check,h);
   if (!IsValidCouple(hh_to_check,spouse, head)) {return 0;}
   
-  int oldestChild = GetOldestChild(hh_to_check,h);
-  if (!IsValidChild(hh_to_check,oldestChild,head)) {return 0;}
+  int oldestBiologicalChild = GetOldestBiologicalChild(hh_to_check,h);
+  if (!IsValidBiologicalChild(hh_to_check,oldestBiologicalChild,head)) {return 0;}
   
-  int oldestChildInLaw = GetOldestChildInLaw(hh_to_check,h);
-  if (!IsValidChildInLaw(hh_to_check,oldestChildInLaw,head)) {return 0;}
+  int oldestAdoptedChild = GetOldestAdoptedChild(hh_to_check,h);
+  if (!IsValidAdoptedChild(hh_to_check,oldestAdoptedChild,head)) {return 0;}
+  
+  int oldestStepChild = GetOldestStepChild(hh_to_check,h);
+  if (!IsValidStepChild(hh_to_check,oldestStepChild,head)) {return 0;}
   
   int youngestParent = GetYoungestParent(hh_to_check,h);
   if (!IsValidParent(hh_to_check,youngestParent,head)) {return 0;}
@@ -205,7 +235,7 @@ inline int isValid(NumericMatrix hh_to_check, int h) {
   int youngestParentInLaw = GetYoungestParentInLaw(hh_to_check,h);
   if (!IsValidParentInLaw(hh_to_check,youngestParentInLaw,head)) {return 0;}
   
-  if (!IsValidSiblingOrSiblingInLaw(hh_to_check,h,head)) {return 0;}
+  if (!IsValidSibling(hh_to_check,h,head)) {return 0;}
   
   if (!IsValidGrandChild(hh_to_check,h,spouse,head)) {return 0;}
   
