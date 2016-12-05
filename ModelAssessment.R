@@ -774,7 +774,33 @@ CompareProbs <- read.table("Results/CompareProbs.txt",header=TRUE)
 round(CompareProbs,3)
 library(xtable)
 xtable(round(CompareProbs[,1:7],3),digits=3)
+xtable(round(CompareProbs[,seq(8,ncol(CompareProbs),by=2)],3),digits=3)
+xtable(round(CompareProbs[,seq(9,ncol(CompareProbs),by=2)],3),digits=3)
 ########################## End of Step 1 ########################## 
+
+###########################################################################
+###########################################################################
+#############################***Blank Space***#############################
+###########################################################################
+###########################################################################
+###########################################################################
+
+library(coda)
+plot(mcmc(read.table("Results/N_ZERO.txt",header = T)))
+plot(mcmc(read.table("Results/ALPHA.txt",header = T)))
+plot(mcmc(read.table("Results/BETA.txt",header = T)))
+plot(mcmc(read.table("Results/M_CLUST.txt",header = T)))
+plot(mcmc(read.table("Results/G_CLUST.txt",header = T)))
+
+plot(mcmc(read.table("Results/N_ZERO_weighted.txt",header = T)))
+plot(mcmc(read.table("Results/ALPHA_weighted.txt",header = T)))
+plot(mcmc(read.table("Results/BETA_weighted.txt",header = T)))
+plot(mcmc(read.table("Results/M_CLUST_weighted.txt",header = T)))
+plot(mcmc(read.table("Results/G_CLUST_weighted.txt",header = T)))
+
+
+
+
 
 
 

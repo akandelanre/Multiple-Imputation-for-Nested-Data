@@ -1,7 +1,9 @@
 
-
-
-for(mc in 1:n_iter){
+while(iter_time < mcmc_time){####Just added
+#for(mc in 1:n_iter){
+  mc <- mc + 1####Just added
+  
+  
   cat(paste("Iteration ", mc,"\n", sep = ""))
   proc_t <- proc.time()
   #sample structural zeros data
@@ -319,7 +321,15 @@ for(mc in 1:n_iter){
   
   
   #save and sample missing values
-  if(mc > burn_in){
+  if(iter_time < burn_in_time){####Just added
+    burn_in <- burn_in + 1####Just added
+  }####Just added
+  
+  #if(mc > burn_in){
+  if(iter_time > burn_in_time){####Just added
+    if(mc == (burn_in + 1)){####Just added
+      M_to_use_mc <- sort(sample(seq((burn_in +1),(burn_in*1.70),by=mc_thin),MM,replace=F))####Just added
+    }####Just added
     #PII <- rbind(PII,c(pii))
     ALPHA <- rbind(ALPHA,alpha)
     G_CLUST <- rbind(G_CLUST,length(unique(G)))
@@ -328,11 +338,11 @@ for(mc in 1:n_iter){
     #LAMBDA[(mc-burn_in),] <- c(lambda)
     #OMEGA[(mc-burn_in),] <- c(omega)
     N_ZERO <- rbind(N_ZERO,sum(n_0))
-  }
-  
-  if(sum(mc==M_to_use_mc)==1){
-    dp_imput_indiv <- rbind(dp_imput_indiv,Data_indiv)  
-    dp_imput_house <- rbind(dp_imput_house,Data_house)
+    
+    if(sum(mc==M_to_use_mc)==1){
+      dp_imput_indiv <- rbind(dp_imput_indiv,Data_indiv)  
+      dp_imput_house <- rbind(dp_imput_house,Data_house)
+    }
   }
   
   
@@ -342,5 +352,20 @@ for(mc in 1:n_iter){
             (sum(n_0_reject)+sum(n_0/struc_weight)),"\n", sep = ''))
   elapsed_time <- (proc.time() - proc_t)[["elapsed"]]
   cat(paste("Elapsed Time = ", elapsed_time, "\n\n", sep = ' '))
+  #plot(mcmc(N_ZERO))
+  
+  #pick one summary to monitor
+  conv_check <- rbind(conv_check,t(lambda%*%pii))
+  if(nrow(conv_check) > 1){
+    plot(mcmc(conv_check[,sample(ncol(conv_check),1,replace=F)]),
+         col="blue")
+    #plot(1:length(conv_check[,sample(ncol(conv_check),1,replace=F)]),
+    #     conv_check[,sample(ncol(conv_check),1,replace=F)],ylab="",xlab="Interations",
+    #     col=rainbow(length(conv_check[,sample(ncol(conv_check),1,replace=F)])),type="b")
+  }
+  
+  iter_time <- iter_time + (elapsed_time/3600) ####Just added
 }
+
+
 
