@@ -353,7 +353,7 @@ prop_batch <- 1.2
 
 
 ###### 8: Weighting
-weight_option <- TRUE #set to true for weighting/capping option
+weight_option <- FALSE #set to true for weighting/capping option
 if(weight_option){
   struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
 } else {
@@ -386,14 +386,14 @@ omega <- V*one_min_V
 #n_iter <- 10000
 #burn_in <- 0.5*n_iter
 MM <- 5
-mc_thin <- 1
+mc_thin <- 5
 #M_to_use_mc <- sort(sample(seq((burn_in +1),n_iter,by=mc_thin),MM,replace=F))
 d_k_indiv_cum <- 1+cumsum(c(0,d_k_indiv[,-p]))
 d_k_house_cum <- 1+cumsum(c(0,d_k_house[,-q]))
 FFF_indiv <- matrix(rep(cumsum(c(0,d_k_indiv[,-p])),each=N),ncol=p)
 FFF_house <- matrix(rep(cumsum(c(0,d_k_house[,-q])),each=n),ncol=q)
 
-mcmc_time <- 1 ####Just added
+mcmc_time <- 24 ####Just added
 burn_in_time <- mcmc_time*0.5####Just added
 mc <- 0;####Just added
 iter_time <- 0;####Just added
