@@ -773,9 +773,12 @@ write.table(CompareProbs,"Results/CompareProbs.txt",row.names = TRUE)
 CompareProbs <- read.table("Results/CompareProbs.txt",header=TRUE)
 round(CompareProbs,3)
 library(xtable)
-xtable(round(CompareProbs[,1:7],3),digits=3)
-xtable(round(CompareProbs[,seq(8,ncol(CompareProbs),by=2)],3),digits=3)
-xtable(round(CompareProbs[,seq(9,ncol(CompareProbs),by=2)],3),digits=3)
+xtable(round(CompareProbs[,c(1,3:7)],3),digits=3)
+xtable(round(CompareProbs[,c(8,seq(10,ncol(CompareProbs),by=2))],3),digits=3)
+xtable(round(CompareProbs[,c(9,seq(11,ncol(CompareProbs),by=2))],3),digits=3)
+
+xtable(round(CompareProbs[,c(8,9,12,13,16,17,20,21)],3),digits=3)
+xtable(round(CompareProbs[,c(12:19)],3),digits=3)
 ########################## End of Step 1 ########################## 
 
 ###########################################################################
