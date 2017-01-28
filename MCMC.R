@@ -356,9 +356,8 @@ while(iter_time < mcmc_time){####Just added
   
   #pick one summary to monitor
   conv_check <- rbind(conv_check,t(lambda%*%pii))
-  if(nrow(conv_check) > 1 & (mc%%10 == 0)){
-    conv_check_truc <- conv_check[,which(conv_check[nrow(conv_check),]>=0.05)]
-    plot(mcmc(conv_check_truc[,sample(ncol(conv_check_truc),1,replace=F)]),
+  if(nrow(conv_check) > 1){
+    plot(mcmc(conv_check[,sample(ncol(conv_check),1,replace=F)]),
          col="blue")
     #plot(1:length(conv_check[,sample(ncol(conv_check),1,replace=F)]),
     #     conv_check[,sample(ncol(conv_check),1,replace=F)],ylab="",xlab="Interations",
