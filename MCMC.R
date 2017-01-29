@@ -1,8 +1,6 @@
 
-while(iter_time < mcmc_time){####Just added
-#for(mc in 1:n_iter){
-  mc <- mc + 1####Just added
-  
+
+for(mc in 1:n_iter){
   
   cat(paste("Iteration ", mc,"\n", sep = ""))
   proc_t <- proc.time()
@@ -321,15 +319,8 @@ while(iter_time < mcmc_time){####Just added
   
   
   #save and sample missing values
-  if(iter_time < burn_in_time){####Just added
-    burn_in <- burn_in + 1####Just added
-  }####Just added
   
-  #if(mc > burn_in){
-  if(iter_time > burn_in_time){####Just added
-    if(mc == (burn_in + 1)){####Just added
-      M_to_use_mc <- sort(sample(seq((burn_in +1),(burn_in*1.70),by=mc_thin),MM,replace=F))####Just added
-    }####Just added
+  if(mc > burn_in){
     #PII <- rbind(PII,c(pii))
     ALPHA <- rbind(ALPHA,alpha)
     G_CLUST <- rbind(G_CLUST,length(unique(G)))
@@ -364,7 +355,6 @@ while(iter_time < mcmc_time){####Just added
     #     col=rainbow(length(conv_check[,sample(ncol(conv_check),1,replace=F)])),type="b")
   }
   
-  iter_time <- iter_time + (elapsed_time/3600) ####Just added
 }
 
 

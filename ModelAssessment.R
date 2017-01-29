@@ -801,7 +801,13 @@ plot(mcmc(read.table("Results/BETA_weighted.txt",header = T)))
 plot(mcmc(read.table("Results/M_CLUST_weighted.txt",header = T)))
 plot(mcmc(read.table("Results/G_CLUST_weighted.txt",header = T)))
 
-
+summary(rbind(read.table("Results/M_CLUST_nz.txt",header = T),read.table("Results/M_CLUST_nz.txt",header = T),
+          read.table("Results/M_CLUST_weighted.txt",header = T),read.table("Results/M_CLUST_weighted_hybrid.txt",header = T),
+          read.table("Results/M_CLUST.txt",header = T)))
+        
+summary(rbind(read.table("Results/G_CLUST_nz.txt",header = T),read.table("Results/G_CLUST_nz.txt",header = T),
+              read.table("Results/G_CLUST_weighted.txt",header = T),read.table("Results/G_CLUST_weighted_hybrid.txt",header = T),
+              read.table("Results/G_CLUST.txt",header = T)))
 
 
 
