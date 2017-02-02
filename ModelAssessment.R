@@ -811,6 +811,15 @@ summary(rbind(read.table("Results/G_CLUST_nz.txt",header = T),read.table("Result
 
 
 
+abs(CompareProbs$Rej..Sampler.L - CompareProbs$Hybrid.Sampler.L) /CompareProbs$Rej..Sampler.L
+
+
+
+
+
+
+
+
 
 
 
