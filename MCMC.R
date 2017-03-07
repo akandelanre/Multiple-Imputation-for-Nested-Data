@@ -228,92 +228,101 @@ for(mc in 1:n_iter){
   
   
   #sample missing X's
-  #First household
-  if(sum(is.na(NA_house)) > 0){
+  #first household data for nonstruc_zeros variables
+  if(sum(is.na(NA_house[,nonstruc_zero_variables_house])) > 0){
     lambda_g <- t(lambda[,G])
-    for(kkk in 2:q){
+    for(kkk in nonstruc_zero_variables_house){
       if(length(which(is.na(NA_house[,kkk])==TRUE))>0){
         pr_X_miss_q <- lambda_g[which(is.na(NA_house[,kkk])==TRUE),d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
         Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
         cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
         level_house_q <- level_house[[kkk]]
-        Data_house[which(is.na(NA_house[,kkk])==TRUE),kkk] <- level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
+        Data_house[is.na(NA_house[,kkk]),kkk] <- level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
       }
     }
   }
-  #Now individuals
-  if(sum(is.na(NA_indiv)) > 0){
-    phi_m_g <- matrix(0,nrow=N,ncol=dim(phi)[1])
-    for(jjj in 1:N){
-      phi_m_g[jjj,] <- phi[,(rep_G[jjj]+((M[jjj]-1)*FF))]
-    }
-    for(kkkk in nonstruc_zero_variables){
+  #now individual data for nonstruc_zeros variables
+  if(sum(is.na(NA_indiv[,nonstruc_zero_variables_indiv])) > 0){
+    phi_m_g <- t(phi[,(rep_G+((M-1)*FF))])
+    for(kkkk in nonstruc_zero_variables_indiv){
       if(length(which(is.na(NA_indiv[,kkkk])==TRUE))>0){
         pr_X_miss_p <- phi_m_g[which(is.na(NA_indiv[,kkkk])==TRUE),d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]
         Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
         cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
         level_indiv_p <- level_indiv[[kkkk]]
-        Data_indiv[which(is.na(NA_indiv[,kkkk])==TRUE),kkkk] <- level_indiv_p[rowSums(Ran_unif_miss_p>cumul_miss_p) + 1L]
+        Data_indiv[is.na(NA_indiv[,kkkk]),kkkk] <- level_indiv_p[rowSums(Ran_unif_miss_p>cumul_miss_p) + 1L]
       }
     }
-    SampleNew <- sample(c("TRUE","FALSE"),1,prob=hybrid_prob,replace=FALSE) 
-    n_batch_imp <- n_batch_imp_init + ceiling(n_0_reject*prop_batch) #no. of batches of imputations to sample
-    n_0_reject[] <- 0
-    for(sss in 1:n_miss){
-      another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
-      n_another_index <- length(another_index) + 1
-      if(SampleNew){
-        NA_indiv_prop <- Data_indiv[another_index,]
-        NA_indiv_prop[,struc_zero_variables] <- NA_indiv[another_index,struc_zero_variables]
-        NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
-        NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp[sss]),byrow=TRUE,ncol=p)
-        rep_G_prop <- rep(rep_G[another_index],n_batch_imp[sss])
-        M_prop <- rep(M[another_index],n_batch_imp[sss])
-        phi_m_g <- t(phi[,(rep_G_prop+((M_prop-1)*FF))])
-        check_counter_sss <- 0;
-        while(check_counter_sss < 1){
-          Data_indiv_prop <- NA_indiv_prop
-          for(kkkk in struc_zero_variables){
-            if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
-              pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),
-                                              d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),
-                                    nrow=length(which(is.na(NA_indiv_prop[,kkkk])==TRUE)),byrow=T)
-              Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
-              cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
-              level_indiv_p <- level_indiv[[kkkk]]
-              Data_indiv_prop[is.na(NA_indiv_prop[,kkkk]),kkkk] <- 
-                level_indiv_p[rowSums(Ran_unif_miss_p>cumul_miss_p) + 1L]
-            }
-          }
-          #Check edit rules
-          comb_to_check <- matrix(t(Data_indiv_prop),nrow=n_batch_imp[sss],byrow=TRUE)
-          NA_house_prop <- Data_house[Indiv_miss_index_HH[sss],(q-p+1):q] 
-          comb_to_check_HH <-matrix(rep(apply(NA_house_prop,2,function(x) as.numeric(as.character(x))),
-                                        n_batch_imp[sss]),nrow=n_batch_imp[sss],byrow = T)
-          comb_to_check <- cbind(comb_to_check_HH,comb_to_check)
-          check_counter <- checkSZ(comb_to_check,n_another_index)
-          check_counter_sss <- check_counter_sss + sum(check_counter)
-          if(length(which(check_counter==1))>0){
-            n_0_reject[sss] <- n_0_reject[sss] + length(which(check_counter[1:which(check_counter==1)[1]]==0))
-          } else{
-            n_0_reject[sss] <- n_0_reject[sss] + n_batch_imp[sss]
+  }
+  #now structural zeros data
+  SampleNew <- sample(c("TRUE","FALSE"),1,prob=hybrid_prob,replace=FALSE) 
+  n_batch_imp <- n_batch_imp_init + ceiling(n_0_reject*prop_batch) #no. of batches of imputations to sample
+  n_0_reject[] <- 0
+  for(sss in 1:n_miss){
+    another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
+    n_another_index <- length(another_index) + 1
+    if(SampleNew){
+      NA_house_prop <- Data_house[Indiv_miss_index_HH[sss],]
+      NA_house_prop[,struc_zero_variables_house] <- NA_house[Indiv_miss_index_HH[sss],struc_zero_variables_house]
+      NA_house_prop <- apply(NA_house_prop,2,function(x) as.numeric(as.character(x)))
+      NA_house_prop <- matrix(rep(t(NA_house_prop),n_batch_imp[sss]),byrow=TRUE,ncol=q)
+      G_prop <- rep(G[Indiv_miss_index_HH[sss]],n_batch_imp[sss])
+      lambda_g <- t(lambda[,G_prop])
+      NA_indiv_prop <- Data_indiv[another_index,]
+      NA_indiv_prop[,struc_zero_variables_indiv] <- NA_indiv[another_index,struc_zero_variables_indiv]
+      NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
+      NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp[sss]),byrow=TRUE,ncol=p)
+      rep_G_prop <- rep(rep_G[another_index],n_batch_imp[sss])
+      M_prop <- rep(M[another_index],n_batch_imp[sss])
+      phi_m_g <- t(phi[,(rep_G_prop+((M_prop-1)*FF))])
+      check_counter_sss <- 0;
+      while(check_counter_sss < 1){
+        Data_house_prop <- NA_house_prop
+        for(kkk in struc_zero_variables_house){
+          if(length(which(is.na(NA_house_prop[,kkk])==TRUE))>0){
+            pr_X_miss_q <- lambda_g[which(is.na(NA_house_prop[,kkk])==TRUE),d_k_house_cum[kkk]:cumsum(d_k_house)[kkk]]
+            Ran_unif_miss_q <- runif(nrow(pr_X_miss_q))
+            cumul_miss_q <- pr_X_miss_q%*%upper.tri(diag(ncol(pr_X_miss_q)),diag=TRUE)
+            level_house_q <- level_house[[kkk]]
+            Data_house_prop[is.na(NA_house_prop[,kkk]),kkk] <- level_house_q[rowSums(Ran_unif_miss_q>cumul_miss_q) + 1L]    
           }
         }
-        Data_indiv[another_index,] <-
-          matrix(comb_to_check[which(check_counter==1)[1],-c(1:p)],byrow=TRUE,ncol=p) #remove household head
-      } else {
-        post_prop_indiv_sss <- Post_prop_indiv[[sss]]
-        FFF_indiv_prop <- matrix(cumsum(c(0,d_k_indiv[,-p])),ncol=p,nrow=nrow(post_prop_indiv_sss),byrow=T)
-        phi_index_prop <- data.matrix(post_prop_indiv_sss) + FFF_indiv_prop
-        G_prop <- rep_G[another_index]; M_prop <- M[another_index];
-        G_prop <- rep(G_prop,n_prop); M_prop <- rep(M_prop,n_prop)
-        pi_prop <- t(as.matrix(prHH(phi_index_prop,phi,c(G_prop),c(M_prop),FF,h=(n_another_index-1))))
-        pi_prop <- pi_prop/sum(pi_prop) #renormalize
-        Ran_unif_miss_prop <- runif(nrow(pi_prop))
-        cumul_miss_prop <- pi_prop%*%upper.tri(diag(ncol(pi_prop)),diag=TRUE)
-        index_prop <- rowSums(Ran_unif_miss_prop>cumul_miss_prop) + 1L
-        Data_indiv[another_index,] <- post_prop_indiv_sss[(1:(n_another_index-1)+((n_another_index-1)*(index_prop-1))),]
+        Data_indiv_prop <- NA_indiv_prop
+        for(kkkk in struc_zero_variables_indiv){
+          if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
+            pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),
+                                  nrow=length(which(is.na(NA_indiv_prop[,kkkk])==TRUE)),byrow=T)
+            Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
+            cumul_miss_p <- pr_X_miss_p%*%upper.tri(diag(ncol(pr_X_miss_p)),diag=TRUE)
+            level_indiv_p <- level_indiv[[kkkk]]
+            Data_indiv_prop[is.na(NA_indiv_prop[,kkkk]),kkkk] <- level_indiv_p[rowSums(Ran_unif_miss_p>cumul_miss_p) + 1L]
+          }
+        }
+        #Check edit rules
+        comb_to_check <- matrix(t(Data_indiv_prop),nrow=n_batch_imp[sss],byrow=TRUE)
+        comb_to_check <- cbind(Data_house_prop[,(q-p+1):q],comb_to_check)
+        check_counter <- checkSZ(comb_to_check,n_another_index)
+        check_counter_sss <- check_counter_sss + sum(check_counter)
+        if(length(which(check_counter==1))>0){
+          n_0_reject[sss] <- n_0_reject[sss] + length(which(check_counter[1:which(check_counter==1)[1]]==0))
+        } else{
+          n_0_reject[sss] <- n_0_reject[sss] + n_batch_imp[sss]
+        }
       }
+      Data_house[Indiv_miss_index_HH[sss],] <- Data_house_prop[which(check_counter==1)[1],]
+      Data_indiv[another_index,] <- matrix(comb_to_check[which(check_counter==1)[1],-c(1:p)],byrow=TRUE,ncol=p)
+    } else {
+      post_prop_indiv_sss <- Post_prop_indiv[[sss]]
+      FFF_indiv_prop <- matrix(cumsum(c(0,d_k_indiv[,-p])),ncol=p,nrow=nrow(post_prop_indiv_sss),byrow=T)
+      phi_index_prop <- data.matrix(post_prop_indiv_sss) + FFF_indiv_prop
+      G_prop <- rep_G[another_index]; M_prop <- M[another_index];
+      G_prop <- rep(G_prop,n_prop); M_prop <- rep(M_prop,n_prop)
+      pi_prop <- t(as.matrix(prHH(phi_index_prop,phi,c(G_prop),c(M_prop),FF,h=(n_another_index-1))))
+      pi_prop <- pi_prop/sum(pi_prop) #renormalize
+      Ran_unif_miss_prop <- runif(nrow(pi_prop))
+      cumul_miss_prop <- pi_prop%*%upper.tri(diag(ncol(pi_prop)),diag=TRUE)
+      index_prop <- rowSums(Ran_unif_miss_prop>cumul_miss_prop) + 1L
+      Data_indiv[another_index,] <- post_prop_indiv_sss[(1:(n_another_index-1)+((n_another_index-1)*(index_prop-1))),]
     }
   }
   

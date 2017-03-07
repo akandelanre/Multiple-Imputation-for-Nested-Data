@@ -132,7 +132,7 @@ O_house[,quick_miss_index] <- rbinom((n*length(quick_miss_index)),1,0.70)
 X_house[O_house==0] <- NA
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(X_indiv)
-others_names <- c("Gender","Race","Hisp","Relate")
+others_names <- c("Gender","Race","Hisp")
 O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
 O_indiv[which(X_indiv$Relate==2),"Age"] <- rbinom(length(which(X_indiv$Relate == 2)),1,0.50)
 O_indiv[which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10),"Age"] <- 
@@ -206,8 +206,17 @@ Rcpp::sourceCpp('CppFunctions/checkSZ.cpp')
 Rcpp::sourceCpp('CppFunctions/prHH.cpp')
 source("OtherFunctions/OtherFunctions.R")
 source("OtherFunctions/NDPMPM_No_StrucZeros.R")
-X_house = read.table("Data/X_house.txt",header=TRUE)
-X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
+#X_house = read.table("Data/X_house.txt",header=TRUE)
+#X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
+Y_house = read.table("Data/Y_house.txt",header=TRUE)
+Y_indiv = read.table("Data/Y_indiv.txt",header=TRUE)
+X_house = read.table("Data/Data_house_truth.txt",header=TRUE)
+X_indiv = read.table("Data/Data_indiv_truth.txt",header=TRUE)
+E_house <- data.matrix(X_house)- data.matrix(Y_house)
+X_house[E_house!=0] <- NA
+E_indiv <- data.matrix(X_indiv)- data.matrix(Y_indiv)
+X_indiv[E_indiv!=0] <- NA
+
 level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:96),c(2:13))
 level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(16:96),c(1))
 Data_house <- data.frame(X_house)
@@ -235,9 +244,11 @@ n_i_index <- rep(n_i,n_i)
 
 ###### 3: Missing data indexes
 NA_indiv <- Data_indiv; NA_house <- Data_house;
-struc_zero_variables <- c(1,4,5)
-nonstruc_zero_variables <- c(2,3)
-Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables])]))
+struc_zero_variables_indiv <- c(1,4,5)
+nonstruc_zero_variables_indiv <- c(1:ncol(Data_indiv))[-struc_zero_variables_indiv]
+struc_zero_variables_house <- c(1,4) + (q-p)
+nonstruc_zero_variables_house <- c(1:ncol(Data_house))[-struc_zero_variables_house]
+Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables_indiv])]))
 n_miss <- length(Indiv_miss_index_HH)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #n_i_miss <- n_i[Indiv_miss_index_HH]
@@ -270,7 +281,7 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #remove(NDPMPM_imput)
 
 ###### 5: Hybrid rejection
-hybrid_option <- TRUE
+hybrid_option <- FALSE ### Remember to fix the hybrid piece of the MCMC.R code 
 n_prop <- 50
 if(hybrid_option){
   ###### 5a: First fill missing values for household level and non-structural zeros variables 
@@ -282,8 +293,8 @@ if(hybrid_option){
     }
   }
   
-  if(sum(is.na(NA_indiv[nonstruc_zero_variables,])) > 0){
-    for (ii in nonstruc_zero_variables){
+  if(sum(is.na(NA_indiv[nonstruc_zero_variables_indiv,])) > 0){
+    for (ii in nonstruc_zero_variables_indiv){
       Data_indiv[is.na(Data_indiv[,ii]),ii] <- 
         sample(level_indiv[[ii]],length(Data_indiv[is.na(Data_indiv[,ii]),ii]),replace=T,
                prob=summary(na.omit(Data_indiv[,ii])))
@@ -353,7 +364,7 @@ prop_batch <- 1.2
 
 
 ###### 8: Weighting
-weight_option <- TRUE #set to true for weighting/capping option
+weight_option <- FALSE #set to true for weighting/capping option
 if(weight_option){
   struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
 } else {
@@ -385,7 +396,7 @@ pii <- U*one_min_U
 omega <- V*one_min_V
 n_iter <- 10000
 burn_in <- 0.5*n_iter
-MM <- 5
+MM <- 50
 mc_thin <- 1
 M_to_use_mc <- sort(sample(seq((burn_in +1),n_iter,by=mc_thin),MM,replace=F))
 d_k_indiv_cum <- 1+cumsum(c(0,d_k_indiv[,-p]))
