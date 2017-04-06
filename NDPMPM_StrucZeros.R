@@ -18,7 +18,7 @@ House <- read.csv("Data/House.csv",header=T)
 Indiv <- read.csv("Data/Indiv.csv",header=T)
 
 
-###### 2: Remove Households with size < 2 and > 4
+###### 2: Keep only houesholds with sizes 2 to 4
 House <- House[which(House$NP >= 2 & House$NP <= 4),]
 
 
@@ -28,7 +28,7 @@ House$TEN[which(House$TEN == 2)] <- 1
 House$TEN[which(House$TEN == 3)] <- 2
 
 
-###### 4: Take a sample of size 2,000 Households
+###### 4: Take a sample of size 5,000 Households
 set.seed(1010)
 sample_size <- 5000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
@@ -206,16 +206,8 @@ Rcpp::sourceCpp('CppFunctions/checkSZ.cpp')
 Rcpp::sourceCpp('CppFunctions/prHH.cpp')
 source("OtherFunctions/OtherFunctions.R")
 source("OtherFunctions/NDPMPM_No_StrucZeros.R")
-#X_house = read.table("Data/X_house.txt",header=TRUE)
-#X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
-Y_house = read.table("Data/Y_house.txt",header=TRUE)
-Y_indiv = read.table("Data/Y_indiv.txt",header=TRUE)
-X_house = read.table("Data/Data_house_truth.txt",header=TRUE)
-X_indiv = read.table("Data/Data_indiv_truth.txt",header=TRUE)
-E_house <- data.matrix(X_house)- data.matrix(Y_house)
-X_house[E_house!=0] <- NA
-E_indiv <- data.matrix(X_indiv)- data.matrix(Y_indiv)
-X_indiv[E_indiv!=0] <- NA
+X_house = read.table("Data/X_house.txt",header=TRUE)
+X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
 
 level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:96),c(2:13))
 level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(16:96),c(1))
@@ -253,7 +245,8 @@ n_miss <- length(Indiv_miss_index_HH)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #n_i_miss <- n_i[Indiv_miss_index_HH]
 
-###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
+###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!), 
+###### Save only individuals data since age and gender are set to be always observed for household head
 #proc_tt <- proc.time()
 #n_prop <- 50; MM <- 50
 #NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
@@ -265,6 +258,7 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 
 
 ###### 4b: Run unaugmented model with rejection sampler at every iteration and save imputation (one time only!!!)
+###### This is just for model assessment!
 #proc_tt <- proc.time()
 #n_prop <- 50; MM <- 50
 #NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
