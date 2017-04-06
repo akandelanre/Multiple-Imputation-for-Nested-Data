@@ -58,9 +58,9 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
                prob=summary(na.omit(Data_house[,jj])))
     }
   }
-  struc_zero_variables <- c(1,4,5)
-  nonstruc_zero_variables <- c(2,3)
-  Indiv_miss_index_HH <- sort(unique(house_index[which(complete.cases(NA_indiv[,struc_zero_variables])==FALSE)]))
+  struc_zero_variables_indiv <- c(1,4,5)
+  nonstruc_zero_variables_indiv <- c(2,3)
+  Indiv_miss_index_HH <- sort(unique(house_index[which(complete.cases(NA_indiv[,struc_zero_variables_indiv])==FALSE)]))
   n_miss <- length(Indiv_miss_index_HH)
   Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
   
@@ -217,7 +217,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
       for(jjj in 1:N){
         phi_m_g[jjj,] <- phi[,(rep_G[jjj]+((M[jjj]-1)*FF))]
       }
-      for(kkkk in nonstruc_zero_variables){
+      for(kkkk in nonstruc_zero_variables_indiv){
         if(length(which(is.na(NA_indiv[,kkkk])==TRUE))>0){
           pr_X_miss_p <- phi_m_g[which(is.na(NA_indiv[,kkkk])==TRUE),d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]
           Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
@@ -227,7 +227,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
         }
       }
       if(!struc_zero){
-        for(kkkk in struc_zero_variables){
+        for(kkkk in struc_zero_variables_indiv){
           if(length(which(is.na(NA_indiv[,kkkk])==TRUE))>0){
             pr_X_miss_p <- phi_m_g[which(is.na(NA_indiv[,kkkk])==TRUE),d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]
             Ran_unif_miss_p <- runif(nrow(pr_X_miss_p))
@@ -244,7 +244,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
           another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
           n_another_index <- length(another_index) + 1
           NA_indiv_prop <- Data_indiv[another_index,]
-          NA_indiv_prop[,struc_zero_variables] <- NA_indiv[another_index,struc_zero_variables]
+          NA_indiv_prop[,struc_zero_variables_indiv] <- NA_indiv[another_index,struc_zero_variables_indiv]
           NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
           NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp),byrow=TRUE,ncol=p)
           rep_G_prop <- rep(rep_G[another_index],n_batch_imp)
@@ -253,7 +253,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
           check_counter_sss <- 0;
           while(check_counter_sss < 1){
             Data_indiv_prop <- NA_indiv_prop
-            for(kkkk in struc_zero_variables){
+            for(kkkk in struc_zero_variables_indiv){
               if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
                 pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),
                                                 d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),
@@ -303,15 +303,15 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
       
       if(sum(mc==n_prop_to_use_mc)==1 && save_prop){
         if(!struc_zero && valid_prop){
-          if(sum(is.na(NA_indiv[,struc_zero_variables])) > 0){
-            n_miss_struc <- length(sort(unique(house_index[which(complete.cases(NA_indiv[,struc_zero_variables])==FALSE)])))
+          if(sum(is.na(NA_indiv[,struc_zero_variables_indiv])) > 0){
+            n_miss_struc <- length(sort(unique(house_index[which(complete.cases(NA_indiv[,struc_zero_variables_indiv])==FALSE)])))
             for(sss in 1:n_miss_struc){
               n_batch_imp <- n_batch_imp_init[sss] + ceiling(n_0_reject[sss]*prop_batch) #no. of batches of imp.s to sample
               n_0_reject[sss] <- 0
               another_index <- which(is.element(house_index,Indiv_miss_index_HH[sss])==TRUE)
               n_another_index <- length(another_index) + 1
               NA_indiv_prop <- Data_indiv[another_index,]
-              NA_indiv_prop[,struc_zero_variables] <- NA_indiv[another_index,struc_zero_variables]
+              NA_indiv_prop[,struc_zero_variables_indiv] <- NA_indiv[another_index,struc_zero_variables_indiv]
               NA_indiv_prop <- apply(NA_indiv_prop,2,function(x) as.numeric(as.character(x)))
               NA_indiv_prop <- matrix(rep(t(NA_indiv_prop),n_batch_imp),byrow=TRUE,ncol=p)
               rep_G_prop <- rep(rep_G[another_index],n_batch_imp)
@@ -320,7 +320,7 @@ fit_NDPMPM <- function(Data_house,Data_indiv,FF,SS,n_iter,burn_in,MM,n_prop,stru
               check_counter_sss <- 0;
               while(check_counter_sss < 1){
                 Data_indiv_prop <- NA_indiv_prop
-                for(kkkk in struc_zero_variables){
+                for(kkkk in struc_zero_variables_indiv){
                   if(length(which(is.na(NA_indiv_prop[,kkkk])==TRUE))>0){
                     pr_X_miss_p <- matrix(t(phi_m_g[which(is.na(NA_indiv_prop[,kkkk])==TRUE),
                                                     d_k_indiv_cum[kkkk]:cumsum(d_k_indiv)[kkkk]]),

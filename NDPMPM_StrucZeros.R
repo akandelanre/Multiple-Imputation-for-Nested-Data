@@ -18,7 +18,7 @@ House <- read.csv("Data/House.csv",header=T)
 Indiv <- read.csv("Data/Indiv.csv",header=T)
 
 
-###### 2: Remove Households with size < 2 and > 4
+###### 2: Keep only houesholds with sizes 2 to 4
 House <- House[which(House$NP >= 2 & House$NP <= 4),]
 
 
@@ -28,7 +28,7 @@ House$TEN[which(House$TEN == 2)] <- 1
 House$TEN[which(House$TEN == 3)] <- 2
 
 
-###### 4: Take a sample of size 2,000 Households
+###### 4: Take a sample of size 5,000 Households
 set.seed(1010)
 sample_size <- 5000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
@@ -132,7 +132,7 @@ O_house[,quick_miss_index] <- rbinom((n*length(quick_miss_index)),1,0.70)
 X_house[O_house==0] <- NA
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(X_indiv)
-others_names <- c("Gender","Race","Hisp","Relate")
+others_names <- c("Gender","Race","Hisp")
 O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
 O_indiv[which(X_indiv$Relate==2),"Age"] <- rbinom(length(which(X_indiv$Relate == 2)),1,0.50)
 O_indiv[which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10),"Age"] <- 
@@ -208,6 +208,7 @@ source("OtherFunctions/OtherFunctions.R")
 source("OtherFunctions/NDPMPM_No_StrucZeros.R")
 X_house = read.table("Data/X_house.txt",header=TRUE)
 X_indiv = read.table("Data/X_indiv.txt",header=TRUE)
+
 level_indiv = list(c(1:2),c(1:9),c(1:5),c(1:96),c(2:13))
 level_house = list(c(1:3),c(1:2),c(1:2),c(1:9),c(1:5),c(16:96),c(1))
 Data_house <- data.frame(X_house)
@@ -235,14 +236,17 @@ n_i_index <- rep(n_i,n_i)
 
 ###### 3: Missing data indexes
 NA_indiv <- Data_indiv; NA_house <- Data_house;
-struc_zero_variables <- c(1,4,5)
-nonstruc_zero_variables <- c(2,3)
-Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables])]))
+struc_zero_variables_indiv <- c(1,4,5)
+nonstruc_zero_variables_indiv <- c(1:ncol(Data_indiv))[-struc_zero_variables_indiv]
+struc_zero_variables_house <- c(1,4) + (q-p)
+nonstruc_zero_variables_house <- c(1:ncol(Data_house))[-struc_zero_variables_house]
+Indiv_miss_index_HH <- sort(unique(house_index[!complete.cases(NA_indiv[,struc_zero_variables_indiv])]))
 n_miss <- length(Indiv_miss_index_HH)
 Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #n_i_miss <- n_i[Indiv_miss_index_HH]
 
-###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!)
+###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!), 
+###### Save only individuals data since age and gender are set to be always observed for household head
 #proc_tt <- proc.time()
 #n_prop <- 50; MM <- 50
 #NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
@@ -254,6 +258,7 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 
 
 ###### 4b: Run unaugmented model with rejection sampler at every iteration and save imputation (one time only!!!)
+###### This is just for model assessment!
 #proc_tt <- proc.time()
 #n_prop <- 50; MM <- 50
 #NDPMPM_imput <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
@@ -270,7 +275,7 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #remove(NDPMPM_imput)
 
 ###### 5: Hybrid rejection
-hybrid_option <- TRUE
+hybrid_option <- FALSE ### Remember to fix the hybrid piece of the MCMC.R code 
 n_prop <- 50
 if(hybrid_option){
   ###### 5a: First fill missing values for household level and non-structural zeros variables 
@@ -282,8 +287,8 @@ if(hybrid_option){
     }
   }
   
-  if(sum(is.na(NA_indiv[nonstruc_zero_variables,])) > 0){
-    for (ii in nonstruc_zero_variables){
+  if(sum(is.na(NA_indiv[nonstruc_zero_variables_indiv,])) > 0){
+    for (ii in nonstruc_zero_variables_indiv){
       Data_indiv[is.na(Data_indiv[,ii]),ii] <- 
         sample(level_indiv[[ii]],length(Data_indiv[is.na(Data_indiv[,ii]),ii]),replace=T,
                prob=summary(na.omit(Data_indiv[,ii])))
@@ -353,7 +358,7 @@ prop_batch <- 1.2
 
 
 ###### 8: Weighting
-weight_option <- TRUE #set to true for weighting/capping option
+weight_option <- FALSE #set to true for weighting/capping option
 if(weight_option){
   struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
 } else {
@@ -385,7 +390,7 @@ pii <- U*one_min_U
 omega <- V*one_min_V
 n_iter <- 10000
 burn_in <- 0.5*n_iter
-MM <- 5
+MM <- 50
 mc_thin <- 1
 M_to_use_mc <- sort(sample(seq((burn_in +1),n_iter,by=mc_thin),MM,replace=F))
 d_k_indiv_cum <- 1+cumsum(c(0,d_k_indiv[,-p]))
