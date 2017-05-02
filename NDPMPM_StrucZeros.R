@@ -247,14 +247,14 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 
 ###### 4a: Run unaugmented model with rejection sampler at the end and save proposals (one time only!!!), 
 ###### Save only individuals data since age and gender are set to be always observed for household head
-#proc_tt <- proc.time()
-#n_prop <- 50; MM <- 50
-#NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
-#                               struc_zero=F,valid_prop=T,mc_thin=50,save_imp=F,save_prop=T)
-#writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
-#  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
-#writeFun(NDPMPM_proposals)
-#(proc.time() - proc_tt)[["elapsed"]]
+proc_tt <- proc.time()
+n_prop <- 150; MM <- 50
+NDPMPM_proposals <- fit_NDPMPM(Data_house,Data_indiv,FF=30,SS=15,n_iter=10000,burn_in=5000,MM=MM,n_prop=n_prop,
+                               struc_zero=F,valid_prop=T,mc_thin=10,save_imp=F,save_prop=T)
+writeFun <- function(LL){names.ll <- names(LL);for(i in names.ll){
+  write.table(LL[[i]],paste0("Initial/",i,".txt"),row.names = FALSE)}}
+writeFun(NDPMPM_proposals)
+(proc.time() - proc_tt)[["elapsed"]]
 
 
 ###### 4b: Run unaugmented model with rejection sampler at every iteration and save imputation (one time only!!!)
@@ -275,8 +275,8 @@ Indiv_miss_index <- which(is.element(house_index,Indiv_miss_index_HH)==TRUE)
 #remove(NDPMPM_imput)
 
 ###### 5: Hybrid rejection
-hybrid_option <- FALSE ### Remember to fix the hybrid piece of the MCMC.R code 
-n_prop <- 50
+hybrid_option <- TRUE ### Remember to fix the hybrid piece of the MCMC.R code 
+n_prop <- 150
 if(hybrid_option){
   ###### 5a: First fill missing values for household level and non-structural zeros variables 
   if(sum(is.na(NA_house)) > 0){
