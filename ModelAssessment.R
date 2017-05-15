@@ -232,9 +232,12 @@ write.table(CompareProbs,"Results/CompareProbs.txt",row.names = TRUE)
 CompareProbs <- read.table("Results/CompareProbs.txt",header=TRUE)
 round(CompareProbs,3)
 
-#library(xtable)
-#xtable(round(CompareProbs[,c(1:3)],3),digits=3)
-#xtable(round(CompareProbs[,c(4:7)],3),digits=3)
+library(xtable)
+xtable(round(CompareProbs[,c("Pop..Q","Orig..Data.L","Orig..Data.U","Model.L","Model.U",
+                             "Hybrid.Sampler.L","Hybrid.Sampler.U","NZ.Sampler.L","NZ.Sampler.U")],3),digits=3)
+xtable(round(CompareProbs[,c("Model.L","Model.U",
+                             "Weighted.Sampler.L","Weighted.Sampler.U","Hybrid.Sampler.L","Hybrid.Sampler.U",
+                             "Weighted.Hybrid.Sampler.L","Weighted.Hybrid.Sampler.U")],3),digits=3)
 
 ################################## END ####################################
 
