@@ -89,8 +89,23 @@ origdata <- data.frame(HHIndex = rep(c(1:sample_size),(House$NP-1L)),
                        HHRelate = rep(HHhead_data$RELP,(House$NP-1L)))
 
 
+###### 9: Separate household and individual data
+n_all <- length(unique(origdata$HHIndex))
+X_indiv <- NULL
+X_house <- NULL
+for(i in 1:n_all){
+  which_indiv <- which(origdata$HHIndex==i)
+  X_indiv <- rbind(X_indiv,origdata[which_indiv,c("Gender","Race","Hisp","Age","Relate")])
+  X_house <- rbind(X_house,cbind(length(which_indiv),origdata[
+    which_indiv[length(which_indiv)],c("Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")]))
+}
+colnames(X_house) <- c("HHSize","Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")
+X_house <- as.data.frame(X_house)
+Data_indiv_truth <- X_indiv; Data_house_truth <- X_house
+
+
 ###### 10: Poke holes in Data:: Ignore missing household level data for now
-set.seed(0000)
+#set.seed(0000)
 N <- nrow(X_indiv)
 n <- nrow(X_house)
 n_i <- as.numeric(as.character(X_house[,1]))
@@ -99,12 +114,12 @@ q <- ncol(X_house)
 house_index <- rep(c(1:n),n_i)
 O_house <- matrix(1,ncol=q,nrow=n)
 colnames(O_house) <- colnames(X_house)
-quick_miss_index <- c("Owner","HHRace","HHHisp")
+quick_miss_index <- c("Owner","HHGender","HHRace","HHHisp")
 O_house[,quick_miss_index] <- rbinom((n*length(quick_miss_index)),1,0.70)
 X_house[O_house==0] <- NA
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(X_indiv)
-others_names <- c("Gender","Race","Hisp")
+others_names <- c("Gender","Race","Hisp","Age")
 O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
 O_indiv[which(X_indiv$Relate==2),"Age"] <- rbinom(length(which(X_indiv$Relate == 2)),1,0.50)
 O_indiv[which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10),"Age"] <-
@@ -118,24 +133,8 @@ O_indiv[which(X_indiv$Age > 50 & X_indiv$Age <= 70),"Relate"] <- rbinom(length(w
 X_indiv[O_indiv==0] <- NA
 
 
-###### 11: Separate household and individual data
-n_all <- length(unique(origdata$HHIndex))
-X_indiv <- NULL
-X_house <- NULL
-for(i in 1:n_all){
-  which_indiv <- which(origdata$HHIndex==i)
-  X_indiv <- rbind(X_indiv,origdata[which_indiv,c("Gender","Race","Hisp","Age","Relate")])
-  X_house <- rbind(X_house,cbind(length(which_indiv),origdata[
-      which_indiv[length(which_indiv)],c("Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")]))
-}
-colnames(X_house) <- c("HHSize","Owner","HHGender","HHRace","HHHisp","HHAge","HHRelate")
-X_house <- as.data.frame(X_house)
-Data_indiv_truth <- X_indiv; Data_house_truth <- X_house
-
-
-###### 12: Save!!!
-###### 9: Save and load back
-write.table(origdata,"Data/origdata.txt",row.names = FALSE)
+###### 11: Save!!!
+#write.table(origdata,"Data/origdata.txt",row.names = FALSE)
 write.table(X_house, file = "Data/X_house.txt",row.names = FALSE)
 write.table(X_indiv, file = "Data/X_indiv.txt",row.names = FALSE)
 write.table(Data_house_truth, file = "Results/Data_house_truth.txt",row.names = FALSE)
@@ -315,7 +314,7 @@ prop_batch <- 1.2
 
 
 ###### 8: Weighting
-weight_option <- FALSE #set to true for weighting/capping option
+weight_option <- TRUE #set to true for weighting/capping option
 if(weight_option){
   struc_weight <- c(1/2,1/2,1/3) #set weights: must be ordered & no household size must be excluded
 } else {

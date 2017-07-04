@@ -88,10 +88,9 @@ origdata_truth <- origdata
 
 
 ###### 10: Poke holes in Data:: Individual-level variables for now
-set.seed(0000)
 O_matrix <- matrix(1,ncol=ncol(origdata),nrow=nrow(origdata))
 colnames(O_matrix) <- colnames(origdata)
-quick_miss_index <- c("sex","race","hisp")
+quick_miss_index <- c("sex","race","hisp","age")
 O_matrix[,quick_miss_index] <- rbinom((nrow(origdata)*length(quick_miss_index)),1,0.70)
 O_matrix[which(origdata$relate==2),"age"] <- rbinom(length(which(origdata$relate == 2)),1,0.50)
 O_matrix[which(origdata$relate==3 | origdata$relate==4 | origdata$relate==5 | origdata$relate==10),"age"] <-
