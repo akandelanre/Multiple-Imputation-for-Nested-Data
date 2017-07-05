@@ -112,24 +112,17 @@ n_i <- as.numeric(as.character(X_house[,1]))
 p <- ncol(X_indiv)
 q <- ncol(X_house)
 house_index <- rep(c(1:n),n_i)
+miss_samp_index <- sort(sample(1:nrow(X_house),(0.2*nrow(X_house)),replace=F))
 O_house <- matrix(1,ncol=q,nrow=n)
 colnames(O_house) <- colnames(X_house)
-quick_miss_index <- c("Owner","HHGender","HHRace","HHHisp")
-O_house[,quick_miss_index] <- rbinom((n*length(quick_miss_index)),1,0.70)
+quick_miss_index <- c("Owner","HHGender","HHRace","HHHisp","HHAge")
+O_house[miss_samp_index,quick_miss_index] <- rbinom((length(miss_samp_index)*length(quick_miss_index)),1,0.5)
 X_house[O_house==0] <- NA
 O_indiv <- matrix(1,ncol=p,nrow=N)
 colnames(O_indiv) <- colnames(X_indiv)
-others_names <- c("Gender","Race","Hisp","Age")
-O_indiv[,others_names] <- rbinom((N*length(others_names)),1,0.70)
-O_indiv[which(X_indiv$Relate==2),"Age"] <- rbinom(length(which(X_indiv$Relate == 2)),1,0.50)
-O_indiv[which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10),"Age"] <-
-  rbinom(length(which(X_indiv$Relate==3 | X_indiv$Relate==4 | X_indiv$Relate==5 | X_indiv$Relate==10)),1,0.80)
-O_indiv[which(X_indiv$Relate==7 | X_indiv$Relate==9),"Age"] <- rbinom(length(which(X_indiv$Relate==7 | X_indiv$Relate==9)),1,0.60)
-O_indiv[which(X_indiv$Age <= 20),"Relate"] <- rbinom(length(which(X_indiv$Age <= 20)),1,0.60)
-O_indiv[which(X_indiv$Age > 70),"Relate"] <- rbinom(length(which(X_indiv$Age > 70)),1,0.45)
-O_indiv[which(X_indiv$Age > 20 & X_indiv$Age <= 50),"Relate"] <- rbinom(length(which(X_indiv$Age > 20 & X_indiv$Age <= 50)),1,0.75)
-O_indiv[which(X_indiv$Age > 50 & X_indiv$Age <= 70),"Relate"] <- rbinom(length(which(X_indiv$Age > 50 & X_indiv$Age <= 70)),1,0.90)
-#colSums(O_indiv)/N
+others_names <- c("Gender","Race","Hisp","Age","Relate")
+miss_samp_index_indiv <- which(is.element(house_index,miss_samp_index)==TRUE)
+O_indiv[miss_samp_index_indiv,others_names] <- rbinom((length(miss_samp_index_indiv)*length(others_names)),1,0.50)
 X_indiv[O_indiv==0] <- NA
 
 
