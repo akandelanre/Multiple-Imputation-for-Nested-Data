@@ -114,7 +114,7 @@ total_time <- (proc.time() - proc_t)[["elapsed"]]
 setwd("../Results")
 WriteNewResults <- FALSE
 source("ModelAssessment.R")
-
+round(CompareProbs[order(TrueSampleResults$OtherProb,decreasing = TRUE),],3)
 
 
 
