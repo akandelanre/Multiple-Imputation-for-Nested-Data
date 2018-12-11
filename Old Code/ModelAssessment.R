@@ -21,8 +21,17 @@ TrueSample$House <- read.table("Results/Data_house_truth.txt",header=TRUE)
 TrueSample$Indiv <- read.table("Results/Data_indiv_truth.txt",header=TRUE)
 
 Model <- list();
-Model$House <- read.table("Results/dp_imput_house.txt",header=TRUE)
-Model$Indiv <- read.table("Results/dp_imput_indiv.txt",header=TRUE)
+#Model$House <- read.table("Results/dp_imput_house.txt",header=TRUE)
+#Model$Indiv <- read.table("Results/dp_imput_indiv.txt",header=TRUE
+
+mm <- 50;
+Model$House <- NULL; Model$Indiv <- NULL
+for(i in 1:mm){
+  ImputedData <- read.table(paste0("Results/impData_newFormat",i,".txt"),header = T)
+  Model$House <- rbind(Model$House, GetHouseData(ImputedData))
+  Model$Indiv <- rbind(Model$Indiv, GetIndivData(ImputedData))
+}
+remove(mm); remove(ImputedData)
 
 Model_Weighted <- list();
 Model_Weighted$House <- read.table("Results/dp_imput_house_weighted.txt",header=TRUE)
@@ -57,17 +66,17 @@ GlobalPara$house_index_Pop <- rep(c(1:GlobalPara$n_Pop),GlobalPara$n_i_Pop)
 GlobalPara$level_house <- list(c(min((TrueSample$House)$HHSize):max((TrueSample$House)$HHSize)),
                                c(1:2),c(1:2),c(1:9),c(1:5),c(16:96),c(1))
 GlobalPara$level_indiv <- list(c(1:2),c(1:9),c(1:5),c(1:96),c(2:13))
-GlobalPara$Estimands <- 
+GlobalPara$Estimands <-
   c(apply(as.matrix(GlobalPara$H),1,function(x) paste0("Same race household, $n_i = ",as.character(x+1),"$")),
     "Spouse present","Black HH, own",
     "Spouse present, HH is White","Spouse present, HH is Black",
-    "White couple", "Non-White couple, own","Same race couple", 
+    "White couple", "Non-White couple, own","Same race couple",
     "White-nonwhite couple", "Only one parent",
     "At least one biological child present","One grandchild present",
     "At least three generations present",
     "Couples with age difference less than 5",
     "HH older than spouse, White HH","White HH with Hispanic origin",
-    "Only one adult female in house with at least one child less than 5", 
+    "Only one adult female in house with at least one child less than 5",
     "Only one adult Hispanic male in house with at least one child less than 10",
     "Only one adult Black female in house with at least one child less than 18",
     "HH over 35, no children present","Male HH, own",
@@ -90,7 +99,7 @@ GlobalPara$samp_size[GlobalPara$samp_size==0] <- GlobalPara$n
 
 ###### 4: Calculate estimands of interest for population
 PopulationResults <- GetAllProbs(Population$House,Population$Indiv,GlobalPara$level_house,GlobalPara$level_indiv)
-PopulationResults$OtherProb <- 
+PopulationResults$OtherProb <-
   GetOtherProbs(Population$House,Population$Indiv,GlobalPara$n_Pop,GlobalPara$p,GlobalPara$q,
                 GlobalPara$house_index_Pop,GlobalPara$H,length(GlobalPara$Estimands))
 PopulationResults$OtherProb <- PopulationResults$OtherProb/GlobalPara$samp_size_Pop
@@ -98,7 +107,7 @@ PopulationResults$OtherProb <- PopulationResults$OtherProb/GlobalPara$samp_size_
 
 ###### 5: Calculate estimands of interest for true sample data
 TrueSampleResults <- GetAllProbs(TrueSample$House,TrueSample$Indiv,GlobalPara$level_house,GlobalPara$level_indiv)
-TrueSampleResults$OtherProb <- 
+TrueSampleResults$OtherProb <-
   GetOtherProbs(TrueSample$House,TrueSample$Indiv,GlobalPara$n,GlobalPara$p,GlobalPara$q,
                 GlobalPara$house_index,GlobalPara$H,length(GlobalPara$Estimands))
 TrueSampleResults$OtherProb <- TrueSampleResults$OtherProb/GlobalPara$samp_size
@@ -114,7 +123,7 @@ ModelResults_Weighted <- GetOtherProbsMI(Model_Weighted$House,Model_Weighted$Ind
 ###### 6c: Hybrid model
 ModelResults_Hybrid <- GetOtherProbsMI(Model_Hybrid$House,Model_Hybrid$Indiv,GlobalPara,GlobalPara$samp_size)
 ###### 6d: Weighted Hybrid model
-ModelResults_Weighted_Hybrid <- 
+ModelResults_Weighted_Hybrid <-
   GetOtherProbsMI(Model_Weighted_Hybrid$House,Model_Weighted_Hybrid$Indiv,GlobalPara,GlobalPara$samp_size)
 ###### 6e: No Struc. Zeros model
 ModelResults_NZ <- GetOtherProbsMI(Model_NZ$House,Model_NZ$Indiv,GlobalPara,GlobalPara$samp_size)

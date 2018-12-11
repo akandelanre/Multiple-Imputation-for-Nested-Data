@@ -20,7 +20,7 @@ Indiv <- read.csv("Indiv.csv",header=T)
 
 
 ###### 2: Remove Households with size < 2 and > 4
-House <- House[which(House$NP >= 2 & House$NP <= 4),]
+House <- House[which(House$NP >= 2 & House$NP <= 8),]
 
 
 ###### 3: Keep only Households with TEN == 1,2,or 3 and recode 1,2 as 1 and 3 as 2
@@ -30,7 +30,7 @@ House$TEN[which(House$TEN == 3)] <- 2
 
 
 ###### 4: Take a sample of size 5,000 Households
-sample_size <- 5000
+sample_size <- 50000
 samp_index <- sort(sample(1:nrow(House),sample_size,replace=F))
 House <- House[samp_index,]
 
